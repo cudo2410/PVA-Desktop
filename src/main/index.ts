@@ -7,6 +7,7 @@ import { ChatService } from '@core/services/ChatService'
 import { registerChatIpc } from '@adapters/ipc/chat.ipc'
 import { initDatabase, closeDatabase } from '@adapters/db/database'
 import { runMigrations } from '@adapters/db/migrator'
+import { SqliteConversationRepository } from '@adapters/db/SqliteConversationRepository'
 
 function createWindow(): void {
   // Create the browser window.
@@ -42,10 +43,8 @@ function createWindow(): void {
   }
 }
 
-// Khởi tạo Adapter OllamaChatModel (qwen3:1.7b) và Service theo kiến trúc Hexagonal
+// Khởi tạo Adapter OllamaChatModel (qwen3:1.7b)
 const ollamaModel = new OllamaChatModel({ model: 'qwen3:1.7b' })
-const chatService = new ChatService(ollamaModel)
-registerChatIpc(chatService)
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -57,8 +56,15 @@ app.whenReady().then(async () => {
     const db = initDatabase()
     const migrationResult = await runMigrations(db)
     console.log('[SQLite] Database initialized successfully. Migrations:', migrationResult)
+
+    const conversationRepo = new SqliteConversationRepository(db)
+    const chatService = new ChatService(ollamaModel, { repository: conversationRepo })
+    await chatService.init()
+    registerChatIpc(chatService)
   } catch (err) {
     console.error('[SQLite] Failed to initialize database:', err)
+    const fallbackChatService = new ChatService(ollamaModel)
+    registerChatIpc(fallbackChatService)
   }
 
   app.on('browser-window-created', (_, window) => {

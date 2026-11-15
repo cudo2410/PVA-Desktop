@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import avaImg from './assets/ava.jpg'
 
 export interface ChatMessageItem {
   id: string
@@ -18,11 +19,14 @@ function App(): React.JSX.Element {
     'checking' | 'starting' | 'healthy' | 'unhealthy' | 'model_missing'
   >('checking')
   const [healthReason, setHealthReason] = useState<string | undefined>(undefined)
-  const isCheckingRef = useRef(false)
+  const [activeTimestampId, setActiveTimestampId] = useState<string | null>(null)
+  const [persistenceEnabled, setPersistenceEnabled] = useState(true)
 
+  const isCheckingRef = useRef(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<(() => void) | null>(null)
+  const retryCountRef = useRef(0)
 
   const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -42,7 +46,59 @@ function App(): React.JSX.Element {
     }
   }, [])
 
-  const retryCountRef = useRef(0)
+  // Khôi phục cấu hình persistence và lịch sử trò chuyện khi khởi động
+  useEffect(() => {
+    const loadInitialData = async (): Promise<void> => {
+      try {
+        if (window.api?.chat?.getPersistence) {
+          const pRes = await window.api.chat.getPersistence()
+          if (pRes?.success && typeof pRes.enabled === 'boolean') {
+            setPersistenceEnabled(pRes.enabled)
+          }
+        }
+        if (window.api?.chat?.loadHistory) {
+          const hRes = await window.api.chat.loadHistory()
+          if (hRes?.success && Array.isArray(hRes.messages) && hRes.messages.length > 0) {
+            const loaded: ChatMessageItem[] = hRes.messages
+              .filter((m) => m.role === 'user' || m.role === 'assistant')
+              .map((m) => ({
+                id: `history-${m.id}`,
+                role: m.role as 'user' | 'assistant',
+                content: m.content,
+                timestamp: m.createdAt
+                  ? new Date(m.createdAt).toLocaleTimeString('vi-VN', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : '',
+                status: 'completed'
+              }))
+            setMessages(loaded)
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi khi tải lịch sử khởi động:', err)
+      }
+    }
+
+    void loadInitialData()
+  }, [])
+
+  const handleTogglePersistence = async (): Promise<void> => {
+    const nextVal = !persistenceEnabled
+    setPersistenceEnabled(nextVal)
+    try {
+      if (window.api?.chat?.setPersistence) {
+        await window.api.chat.setPersistence(nextVal)
+      }
+    } catch (err) {
+      console.error('Lỗi khi cập nhật cấu hình lưu trữ:', err)
+    }
+  }
+
+  const handleBubbleClick = (id: string): void => {
+    setActiveTimestampId((prev) => (prev === id ? null : id))
+  }
 
   const checkHealth = async (isManual = false): Promise<void> => {
     if (isManual) {
@@ -89,7 +145,6 @@ function App(): React.JSX.Element {
         delay = 2500
         retryCountRef.current += 1
       } else {
-        // Sau 5 lần thử nhanh, chuyển sang giãn cách 30s để tiết kiệm tài nguyên
         delay = 30000
       }
     } else if (healthStatus === 'healthy') {
@@ -138,7 +193,6 @@ function App(): React.JSX.Element {
     }
     setIsGenerating(true)
 
-    // Nếu có stream cũ đang chạy, hủy trước khi bắt đầu stream mới
     if (abortRef.current) {
       abortRef.current()
       abortRef.current = null
@@ -202,7 +256,6 @@ function App(): React.JSX.Element {
 
       abortRef.current = cancel
     } else {
-      // Fallback cho chế độ đồng bộ nếu stream không khả dụng
       void (async () => {
         try {
           const res = await window.api.chat.send(contentToSend)
@@ -248,49 +301,65 @@ function App(): React.JSX.Element {
       {/* Header */}
       <header className="chat-header">
         <div className="brand">
-          <div className="brand-icon">
-            <span>🤖</span>
+          <div className="brand-avatar-wrapper">
+            <img src={avaImg} alt="Sinon Avatar" className="brand-avatar-img" />
           </div>
           <div className="brand-title">
             <span className="brand-name">Asada Sinon</span>
-            <span className="brand-tag">qwen3:1.7b</span>
           </div>
         </div>
+
         <div className="header-meta">
-          <div
-            className="status-pill"
+          {/* Toggle bật/tắt lưu lịch sử */}
+          <button
+            type="button"
+            className={`persistence-pill ${persistenceEnabled ? 'active' : 'inactive'}`}
+            onClick={() => void handleTogglePersistence()}
             title={
-              healthReason
-                ? `Chi tiết: ${healthReason} (Nhấp để thử kết nối lại)`
-                : 'Trạng thái kết nối mô hình (Nhấp để làm mới)'
+              persistenceEnabled
+                ? 'Đang bật lưu lịch sử (Bấm để tắt)'
+                : 'Đang tắt lưu lịch sử (Bấm để bật)'
             }
-            onClick={() => void checkHealth(true)}
           >
-            <span
-              className={`status-dot ${
-                healthStatus === 'healthy'
-                  ? 'status-online'
-                  : healthStatus === 'starting'
+            <span className="persistence-icon">{persistenceEnabled ? '💾' : '🚫'}</span>
+            <span className="persistence-label">
+              {persistenceEnabled ? 'Lưu lịch sử' : 'Không lưu'}
+            </span>
+          </button>
+
+          {/* Ẩn trạng thái "Ollama sẵn sàng" khi healthy; chỉ hiển thị khi khởi động hoặc có sự cố */}
+          {healthStatus !== 'healthy' && (
+            <div
+              className="status-pill"
+              title={
+                healthReason
+                  ? `Chi tiết: ${healthReason} (Nhấp để thử kết nối lại)`
+                  : 'Trạng thái kết nối mô hình (Nhấp để làm mới)'
+              }
+              onClick={() => void checkHealth(true)}
+            >
+              <span
+                className={`status-dot ${
+                  healthStatus === 'starting'
                     ? 'status-starting'
                     : healthStatus === 'model_missing'
                       ? 'status-missing'
                       : healthStatus === 'unhealthy'
                         ? 'status-offline'
                         : 'status-checking'
-              }`}
-            />
-            <span className="status-label">
-              {healthStatus === 'healthy'
-                ? 'Ollama sẵn sàng'
-                : healthStatus === 'starting'
+                }`}
+              />
+              <span className="status-label">
+                {healthStatus === 'starting'
                   ? 'Đang khởi động Ollama...'
                   : healthStatus === 'model_missing'
                     ? 'Chưa tải model qwen3:1.7b'
                     : healthStatus === 'unhealthy'
                       ? 'Ollama ngoại tuyến (Bấm thử lại)'
                       : 'Kiểm tra Ollama...'}
-            </span>
-          </div>
+              </span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -298,13 +367,13 @@ function App(): React.JSX.Element {
       <main className="chat-body">
         {messages.length === 0 ? (
           <div className="chat-empty-state">
-            <div className="empty-icon-card">
-              <span className="empty-icon">👋</span>
+            <div className="empty-avatar-card">
+              <img src={avaImg} alt="Sinon Avatar" className="empty-avatar-img" />
             </div>
-            <h1 className="empty-title">Xin chào! Tôi là PVA</h1>
+            <h1 className="empty-title">Xin chào! Tôi là Sinon</h1>
             <p className="empty-subtitle">
-              Trợ lý ảo cá nhân PVA đang hoạt động với mô hình ngôn ngữ <strong>Qwen3 1.7B</strong>{' '}
-              chạy hoàn toàn cục bộ trên máy tính của bạn thông qua Ollama.
+              Trợ lý ảo cá nhân thông minh hoạt động hoàn toàn cục bộ trên máy tính của bạn với mô
+              hình ngôn ngữ AI bảo mật tuyệt đối.
             </p>
             <div className="suggested-prompts">
               <button
@@ -317,9 +386,9 @@ function App(): React.JSX.Element {
               <button
                 type="button"
                 className="prompt-btn"
-                onClick={() => handleSend('Hãy tóm tắt ngắn gọn vai trò của PVA.')}
+                onClick={() => handleSend('Hãy tóm tắt ngắn gọn vai trò của Sinon.')}
               >
-                💡 Tóm tắt vai trò của PVA
+                💡 Tóm tắt vai trò của Sinon
               </button>
               <button
                 type="button"
@@ -332,50 +401,56 @@ function App(): React.JSX.Element {
           </div>
         ) : (
           <div className="chat-messages">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`message-row ${msg.role}`}>
-                <div
-                  className={`message-bubble ${
-                    msg.status === 'processing' ? 'message-processing' : ''
-                  } ${msg.status === 'error' ? 'message-error' : ''}`}
-                >
-                  <div className="message-meta">
-                    {msg.role === 'assistant' ? (
-                      <>
-                        <span className="assistant-avatar">🤖</span>
-                        <span className="sender-name">PVA</span>
-                      </>
-                    ) : (
-                      <span className="sender-name">Bạn</span>
-                    )}
-                    <span className="meta-separator">•</span>
-                    <span className="meta-time">{msg.timestamp}</span>
-                  </div>
+            {messages.map((msg) => {
+              const isTimestampVisible = activeTimestampId === msg.id
 
-                  {/* Nội dung tin nhắn theo trạng thái */}
-                  {msg.status === 'processing' ? (
-                    <div className="processing-state-box">
-                      <div className="liquid-pulse-dots">
-                        <span className="liquid-dot" />
-                        <span className="liquid-dot" />
-                        <span className="liquid-dot" />
-                      </div>
-                      <span className="processing-label">Đang xử lý...</span>
-                    </div>
-                  ) : msg.status === 'error' ? (
-                    <div className="bubble-error-content">
-                      <span className="bubble-error-icon">⚠️</span>
-                      <span>{msg.error || 'Đã xảy ra lỗi khi tạo phản hồi.'}</span>
-                    </div>
-                  ) : (
-                    <div className="message-text">
-                      {msg.content}
-                      {msg.status === 'streaming' && <span className="streaming-cursor" />}
+              return (
+                <div key={msg.id} className={`message-row ${msg.role}`}>
+                  {msg.role === 'assistant' && (
+                    <div className="msg-avatar-wrapper">
+                      <img src={avaImg} alt="Sinon" className="msg-avatar-img" />
                     </div>
                   )}
+
+                  <div className="message-content-wrapper">
+                    <div
+                      className={`message-bubble ${
+                        msg.status === 'processing' ? 'message-processing' : ''
+                      } ${msg.status === 'error' ? 'message-error' : ''}`}
+                      onClick={() => handleBubbleClick(msg.id)}
+                      title="Bấm để xem thời gian"
+                    >
+                      {/* Nội dung tin nhắn theo phong cách Facebook Messenger - Không hiển thị nhãn Bạn/Sinon */}
+                      {msg.status === 'processing' ? (
+                        <div className="processing-state-box">
+                          <div className="liquid-pulse-dots">
+                            <span className="liquid-dot" />
+                            <span className="liquid-dot" />
+                            <span className="liquid-dot" />
+                          </div>
+                          <span className="processing-label">Đang xử lý...</span>
+                        </div>
+                      ) : msg.status === 'error' ? (
+                        <div className="bubble-error-content">
+                          <span className="bubble-error-icon">⚠️</span>
+                          <span>{msg.error || 'Đã xảy ra lỗi khi tạo phản hồi.'}</span>
+                        </div>
+                      ) : (
+                        <div className="message-text">
+                          {msg.content}
+                          {msg.status === 'streaming' && <span className="streaming-cursor" />}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Thời gian gửi chỉ hiển thị khi người dùng bấm vào tin nhắn */}
+                    {isTimestampVisible && msg.timestamp && (
+                      <div className="bubble-timestamp-popup">{msg.timestamp}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -408,7 +483,7 @@ function App(): React.JSX.Element {
               ref={textareaRef}
               rows={1}
               className="chat-input"
-              placeholder="Nhập tin nhắn cho PVA..."
+              placeholder="Nhập tin nhắn cho Sinon..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

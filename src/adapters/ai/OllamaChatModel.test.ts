@@ -209,4 +209,25 @@ describe('OllamaChatModel Adapter', () => {
     expect(health.status).toBe('model_missing')
     expect(health.reason).toContain('chưa được tải về máy')
   })
+
+  it('gửi think: false trong payload tới Ollama /api/chat', async () => {
+    let capturedBody = ''
+    global.fetch = vi.fn().mockImplementation((_, init?: RequestInit) => {
+      capturedBody = init?.body as string
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message: { role: 'assistant', content: 'Phản hồi không nghĩ' }
+        })
+      } as unknown as Response)
+    })
+
+    const model = new OllamaChatModel({ model: 'qwen3:1.7b' })
+    await model.complete([{ role: 'user', content: 'Chào bạn' }])
+
+    expect(capturedBody).toBeTruthy()
+    const parsed = JSON.parse(capturedBody)
+    expect(parsed.think).toBe(false)
+  })
 })

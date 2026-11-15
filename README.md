@@ -52,6 +52,18 @@ Các điểm nổi bật về mặt kỹ thuật:
   - Hỗ trợ mô hình mặc định (`qwen3:1.7b` chạy trực tiếp trên CPU qua AVX2 để phản hồi tức thì trong quá trình thử nghiệm, sẵn sàng nâng cấp lên `qwen3:4b`) và tham số sinh (`temperature`).
   - Tự động tách và làm sạch thẻ suy nghĩ reasoning (`<think>...</think>`), đảm bảo câu trả lời hiển thị gọn gàng.
   - Chuẩn hóa hệ thống mã lỗi nghiêm ngặt: `MODEL_UNAVAILABLE`, `MODEL_TIMEOUT`, `MODEL_BAD_RESPONSE`.
+- **Lưu trữ hội thoại dạng Transactional & Khôi phục lịch sử (SRS v2.1):**
+  - Tích hợp `ConversationRepository` và `SqliteConversationRepository` lưu cặp tin nhắn User và Assistant vào SQLite bên trong transaction nguyên tử.
+  - Công tắc bật/tắt lưu lịch sử trò chuyện (Persistence Toggle) trực tiếp trên Header.
+  - Tự động khôi phục lịch sử hội thoại khi khởi động lại ứng dụng.
+- **Ngữ cảnh đa lượt & Tắt chế độ suy nghĩ (FR-01):**
+  - Quản lý cửa sổ trượt 10 lượt gần nhất (20 tin nhắn) gửi kèm `DEFAULT_SYSTEM_PROMPT` tiếng Việt.
+  - Cấu hình `think: false` gửi trực tiếp tới Ollama `/api/chat` giúp loại bỏ hoàn toàn các thẻ `<think>` của Qwen3 và phản hồi nhanh tức thì.
+- **Giao diện hội thoại phong cách Facebook Messenger:**
+  - Thiết kế bong bóng tin nhắn co dãn ôm sát nội dung (`width: fit-content; max-width: 72%`), loại bỏ nhãn tiêu đề "Bạn/PVA".
+  - Thời gian gửi hiển thị tương tác khi người dùng bấm vào bong bóng tin nhắn.
+  - Thay avatar PVA bằng hình ảnh chính thức tại `resources/ava.jpg`.
+  - Tối giản Header: tự động ẩn trạng thái "Ollama sẵn sàng" khi kết nối tốt và ẩn nhãn model `qwen3.1`.
 - **Tầng giao tiếp liên tiến trình an toàn (IPC & Preload):**
   - Đăng ký các kênh IPC trong Main Process: `chat:send` (gửi tin nhắn) và `chat:health` (kiểm tra trạng thái Ollama) kèm kiểm tra xác thực dữ liệu đầu vào.
   - Bắt lỗi an toàn tại IPC Adapter, không bao giờ để lộ raw error hay exception stack trace ra ngoài Renderer.
@@ -365,11 +377,19 @@ Các file sau khi đóng gói sẽ được tạo ra tại thư mục `dist/`.
   - [x] Cầu nối Preload an toàn qua `contextBridge` (`window.api.chat`).
 - [x] **Tầng giao diện người dùng (UI Layer - Hoàn thành giao diện Chat)**
   - [x] Giao diện hội thoại tương tác thời gian thực với trợ lý ảo PVA (React 19 + TypeScript).
-  - [x] Trạng thái loading thời gian thực, bong bóng tin nhắn và hiển thị lỗi thân thiện.
-  - [x] Kiểm tra và hiển thị trạng thái hoạt động của Ollama.
-- [ ] **Quản lý công việc (Task Management) & Lưu trữ CSDL**
+  - [x] Bong bóng tin nhắn phong cách Facebook Messenger: co dãn ôm trọn nội dung, ẩn nhãn Bạn/PVA, click xem timestamp.
+  - [x] Cập nhật avatar đại diện PVA từ `resources/ava.jpg`.
+  - [x] Tối giản Header: tự động ẩn trạng thái khi sẵn sàng và ẩn tag model.
+  - [x] Công tắc bật/tắt lưu lịch sử (Persistence Toggle) trực quan.
+- [x] **Lưu trữ hội thoại CSDL & Ngữ cảnh đa lượt (FR-01)**
+  - [x] Duy trì cửa sổ trượt 10 lượt hội thoại gần nhất kèm System Prompt tiếng Việt.
+  - [x] Tắt thẻ suy nghĩ `think: false` trực tiếp trong request payload của Ollama.
+  - [x] Triển khai `SqliteConversationRepository` lưu cặp tin nhắn trong SQLite Transaction nguyên tử.
+  - [x] Tự động tải lại lịch sử hội thoại khi ứng dụng khởi động lại.
+  - [x] Kiểm thử tự động đạt chuẩn 3 lượt hội thoại liên tiếp (FR-01).
+- [ ] **Quản lý công việc (Task Management)**
   - [ ] Bảng theo dõi và quản lý công việc (Todo List).
-  - [ ] Triển khai các Repository SQLite lưu `conversations`, `messages` và `tasks`.
+  - [ ] Triển khai các Repository SQLite lưu `tasks` và `reminders`.
 
 ---
 

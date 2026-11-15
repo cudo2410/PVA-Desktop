@@ -200,6 +200,7 @@ export class OllamaChatModel implements ChatModel {
         content: m.content
       })),
       stream: false,
+      think: false,
       options: {
         temperature: opts?.temperature ?? this.defaultTemperature,
         num_predict: opts?.maxTokens,
@@ -318,6 +319,7 @@ export class OllamaChatModel implements ChatModel {
         content: m.content
       })),
       stream: true,
+      think: false,
       options: {
         temperature: opts?.temperature ?? this.defaultTemperature,
         num_predict: opts?.maxTokens,

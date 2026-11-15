@@ -140,4 +140,49 @@ export function registerChatIpc(chatService: ChatService): void {
       }
     }
   })
+
+  ipcMain.handle('chat:history:load', async () => {
+    try {
+      const messages = await chatService.loadHistory()
+      return { success: true, messages }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể tải lịch sử trò chuyện.'
+      }
+    }
+  })
+
+  ipcMain.handle('chat:history:get-persistence', async () => {
+    try {
+      const enabled = await chatService.getPersistenceEnabled()
+      return { success: true, enabled }
+    } catch {
+      return { success: true, enabled: true }
+    }
+  })
+
+  ipcMain.handle('chat:history:set-persistence', async (_, enabled: unknown) => {
+    try {
+      await chatService.setPersistenceEnabled(Boolean(enabled))
+      return { success: true }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể cập nhật cấu hình lưu trữ.'
+      }
+    }
+  })
+
+  ipcMain.handle('chat:history:clear', async () => {
+    try {
+      await chatService.clearHistory()
+      return { success: true }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể xóa lịch sử trò chuyện.'
+      }
+    }
+  })
 }

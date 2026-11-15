@@ -7,6 +7,11 @@ const api: PvaApi = {
   chat: {
     send: (content: string) => ipcRenderer.invoke('chat:send', content),
     health: () => ipcRenderer.invoke('chat:health'),
+    loadHistory: () => ipcRenderer.invoke('chat:history:load'),
+    getPersistence: () => ipcRenderer.invoke('chat:history:get-persistence'),
+    setPersistence: (enabled: boolean) =>
+      ipcRenderer.invoke('chat:history:set-persistence', enabled),
+    clearHistory: () => ipcRenderer.invoke('chat:history:clear'),
     stream: (content: string, callbacks: ChatStreamCallbacks) => {
       const requestId =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'

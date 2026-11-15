@@ -19,10 +19,34 @@ export interface ChatStreamCallbacks {
   onError: (error: { code?: string; message: string }) => void
 }
 
+export interface HistoryMessageItem {
+  id: number
+  conversationId: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  createdAt: string
+}
+
+export interface ChatHistoryResponse {
+  success: boolean
+  messages?: HistoryMessageItem[]
+  error?: string
+}
+
+export interface ChatPersistenceResponse {
+  success: boolean
+  enabled?: boolean
+  error?: string
+}
+
 export interface PvaApi {
   chat: {
     send(content: string): Promise<ChatSendResponse>
     health(): Promise<ChatHealthResponse>
     stream(content: string, callbacks: ChatStreamCallbacks): () => void
+    loadHistory(): Promise<ChatHistoryResponse>
+    getPersistence(): Promise<ChatPersistenceResponse>
+    setPersistence(enabled: boolean): Promise<ChatPersistenceResponse>
+    clearHistory(): Promise<{ success: boolean; error?: string }>
   }
 }
