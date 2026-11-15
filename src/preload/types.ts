@@ -39,6 +39,32 @@ export interface ChatPersistenceResponse {
   error?: string
 }
 
+export interface ConversationItem {
+  id: number
+  title: string
+  createdAt: string
+  messageCount?: number
+  lastMessage?: string
+}
+
+export interface ConversationListResponse {
+  success: boolean
+  conversations?: ConversationItem[]
+  error?: string
+}
+
+export interface ConversationDetailResponse {
+  success: boolean
+  messages?: HistoryMessageItem[]
+  error?: string
+}
+
+export interface ConversationActionResponse {
+  success: boolean
+  conversation?: ConversationItem
+  error?: string
+}
+
 export interface PvaApi {
   chat: {
     send(content: string): Promise<ChatSendResponse>
@@ -48,5 +74,10 @@ export interface PvaApi {
     getPersistence(): Promise<ChatPersistenceResponse>
     setPersistence(enabled: boolean): Promise<ChatPersistenceResponse>
     clearHistory(): Promise<{ success: boolean; error?: string }>
+    listConversations(): Promise<ConversationListResponse>
+    getConversation(conversationId: number): Promise<ConversationDetailResponse>
+    switchConversation(conversationId: number): Promise<ConversationDetailResponse>
+    createConversation(title?: string): Promise<ConversationActionResponse>
+    deleteConversation(conversationId: number): Promise<{ success: boolean; error?: string }>
   }
 }

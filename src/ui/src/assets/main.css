@@ -36,8 +36,12 @@ body {
   background-color: var(--liquid-bg-base);
   color: var(--liquid-text-primary);
   font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable Display', 'Segoe UI',
-    Inter, Roboto, sans-serif;
+    'Google Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   user-select: text;
@@ -107,16 +111,13 @@ body {
 }
 
 .brand-avatar-wrapper {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  overflow: hidden;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--liquid-bg-surface);
   flex-shrink: 0;
 }
 
@@ -125,19 +126,44 @@ body {
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 50%;
+  border: 2px solid #10b981;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+.brand-avatar-status-dot {
+  position: absolute;
+  bottom: 0px;
+  right: 0px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #080c14;
+  box-shadow: 0 0 8px #10b981;
 }
 
 .brand-title {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 
 .brand-name {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  color: var(--liquid-text-primary);
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.brand-subtitle {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #8e8e93;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .header-meta {
@@ -146,8 +172,49 @@ body {
   gap: 12px;
 }
 
-/* Persistence Toggle Pill */
-.persistence-pill {
+/* Nút mở Lịch sử hình vuông bo góc chứa <|, chỉ đổi màu viền và icon khi hover/bấm vào */
+.history-drawer-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.2px solid rgba(255, 255, 255, 0.16);
+  color: #8e8e93;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+  user-select: none;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.history-drawer-toggle-btn:hover {
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.history-drawer-toggle-btn.is-open {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.history-drawer-toggle-btn.is-open:hover {
+  border-color: #34d399;
+  color: #34d399;
+}
+
+.drawer-icon-symbol {
+  font-family: monospace, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* History Pill (UC-06) */
+.history-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -155,30 +222,58 @@ body {
   border-radius: var(--liquid-radius-pill);
   font-size: 12px;
   font-weight: 500;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--liquid-glass-border);
-  backdrop-filter: var(--liquid-glass-blur-sm);
-  -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
   color: var(--liquid-text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.18s ease, color 0.18s ease;
+  user-select: none;
+}
+
+.history-pill:hover {
+  border-color: #10b981;
+  color: var(--liquid-text-primary);
+}
+
+.history-icon {
+  font-size: 13px;
+}
+
+/* Persistence Toggle Pill */
+.persistence-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
   user-select: none;
 }
 
 .persistence-pill:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: var(--liquid-text-primary);
+  border-color: #10b981;
+  color: #f1f5f9;
 }
 
 .persistence-pill.active {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.4);
-  color: #93c5fd;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #cbd5e1;
+}
+
+.persistence-pill.active:hover {
+  border-color: #10b981;
+  color: #ffffff;
 }
 
 .persistence-icon {
-  font-size: 13px;
+  font-size: 12px;
 }
 
 /* Status Pill */
@@ -192,18 +287,13 @@ body {
   font-weight: 500;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--liquid-glass-border);
-  backdrop-filter: var(--liquid-glass-blur-sm);
-  -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
-  box-shadow: var(--liquid-glass-highlight);
-  transition: all 0.2s ease;
+  transition: border-color 0.18s ease;
   cursor: pointer;
   user-select: none;
 }
 
 .status-pill:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
-  transform: translateY(-1px);
+  border-color: #10b981;
 }
 
 .status-dot {
@@ -263,6 +353,8 @@ body {
   flex-direction: column;
   position: relative;
   z-index: 10;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .chat-messages {
@@ -340,16 +432,13 @@ body {
   border-radius: var(--liquid-radius-md);
   font-size: 13.5px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.18s ease, color 0.18s ease;
   text-align: left;
 }
 
 .prompt-btn:hover {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.35);
-  color: #bfdbfe;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.15);
+  border-color: #10b981;
+  color: #ffffff;
 }
 
 /* Message Rows - Facebook Messenger Layout */
@@ -368,15 +457,37 @@ body {
   justify-content: flex-start;
 }
 
+/* Tiêu đề ngày định dạng Aa */
+.chat-date-divider {
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #8e8e93;
+  margin: 6px 0 14px;
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+/* Container bọc Avatar và bong bóng tin nhắn để căn dưới chính xác với box chat */
+.bubble-with-avatar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Ava PVA căn dưới box chat theo nhận xét người dùng */
 .msg-avatar-wrapper {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  margin-bottom: 2px;
+  margin-bottom: 0;
+  align-self: flex-end;
 }
 
 .msg-avatar-img {
@@ -389,7 +500,7 @@ body {
 .message-content-wrapper {
   display: flex;
   flex-direction: column;
-  max-width: 72%;
+  max-width: 76%;
 }
 
 .message-row.user .message-content-wrapper {
@@ -400,13 +511,15 @@ body {
   align-items: flex-start;
 }
 
-/* Facebook Messenger Style Bubbles (Tight Fit, No Extra Margin) */
+/* Messenger Style Bubbles - Giảm bo góc 3 cạnh xuống 13px (cạnh nhọn 4px) */
 .message-bubble {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   width: fit-content;
   max-width: 100%;
+  min-height: 40px;
   padding: 10px 15px;
-  border-radius: 18px;
+  border-radius: 13px;
   line-height: 1.5;
   font-size: 14.5px;
   word-break: break-word;
@@ -421,16 +534,16 @@ body {
   transform: scale(0.99);
 }
 
-/* User Bubble: Messenger Gradient */
+/* User Bubble: Tông màu xanh lá điểm nhấn (Hologram Emerald Gradient) */
 .message-row.user .message-bubble {
-  background: linear-gradient(135deg, #0084ff, #0066cc);
+  background: linear-gradient(135deg, #10b981 0%, #059669 60%, #0891b2 100%);
   backdrop-filter: var(--liquid-glass-blur-sm);
   -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
   border: 1px solid rgba(255, 255, 255, 0.25);
   color: #ffffff;
   border-bottom-right-radius: 4px;
   box-shadow:
-    0 4px 16px rgba(0, 132, 255, 0.3),
+    0 4px 16px rgba(16, 185, 129, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
@@ -462,6 +575,7 @@ body {
 
 .message-row.assistant .bubble-timestamp-popup {
   text-align: left;
+  padding-left: 40px;
 }
 
 @keyframes fadeInTimestamp {
@@ -642,24 +756,78 @@ body {
 
 .composer-glass-panel {
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 10px 14px 10px 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 6px;
   background: var(--liquid-bg-surface-elevated);
   backdrop-filter: var(--liquid-glass-blur);
   -webkit-backdrop-filter: var(--liquid-glass-blur);
   border: 1px solid var(--liquid-glass-border);
-  border-radius: var(--liquid-radius-lg);
+  border-radius: 28px;
   box-shadow: var(--liquid-shadow-elevated), var(--liquid-glass-highlight);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.composer-glass-panel:focus-within {
-  border-color: var(--liquid-glass-border-focus);
+/* Chỉ highlight khung chat khi ô nhập liệu (chat-input) được focus, bấm + hoặc micro không làm highlight khung chat */
+.composer-glass-panel:has(.chat-input:focus) {
+  border-color: #10b981;
   box-shadow:
     var(--liquid-shadow-elevated),
-    0 0 0 3px rgba(59, 130, 246, 0.2),
+    0 0 0 3px rgba(16, 185, 129, 0.25),
     var(--liquid-glass-highlight);
+}
+
+/* Thao tác nút + và Micro trong Composer */
+.composer-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+  flex-shrink: 0;
+  user-select: none;
+  outline: none;
+}
+
+.composer-action-btn:focus,
+.composer-action-btn:focus-visible {
+  outline: none;
+}
+
+.composer-action-btn.plus-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  margin-left: 2px;
+}
+
+.composer-action-btn.plus-btn .action-symbol {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.composer-action-btn.plus-btn:hover {
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.composer-action-btn.mic-btn {
+  background: transparent;
+  color: #8e8e93;
+}
+
+.composer-action-btn.mic-btn:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #34d399;
+}
+
+.mic-svg {
+  display: block;
 }
 
 .chat-input {
@@ -669,43 +837,80 @@ body {
   outline: none;
   color: var(--liquid-text-primary);
   font-size: 14.5px;
-  line-height: 1.5;
+  line-height: 1.45;
   resize: none;
-  max-height: 140px;
-  padding: 4px 0;
+  max-height: 120px;
+  padding: 6px 4px;
   font-family: inherit;
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chat-input::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .chat-input::placeholder {
   color: var(--liquid-text-tertiary);
 }
 
+/* Nút gửi phong cách Hologram Emerald Apple tròn */
 .send-button {
-  background: linear-gradient(135deg, #0084ff, #0066cc);
+  background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #06b6d4 100%);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  padding: 8px 18px;
-  border-radius: var(--liquid-radius-pill);
-  font-size: 13.5px;
-  font-weight: 600;
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 14px rgba(0, 132, 255, 0.35);
+  transition: border-color 0.18s ease;
   flex-shrink: 0;
 }
 
-.send-button:hover:not(:disabled) {
+.send-arrow {
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0, 132, 255, 0.5);
-  filter: brightness(1.05);
+}
+
+.send-arrow-svg {
+  display: block;
+  transform: translateY(-0.5px);
+}
+
+.send-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spinSend 0.8s linear infinite;
+}
+
+@keyframes spinSend {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.send-button:hover:not(:disabled) {
+  border-color: #ffffff;
 }
 
 .send-button:active:not(:disabled) {
-  transform: translateY(0);
+  border-color: #a7f3d0;
 }
 
 .send-button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
   box-shadow: none;
 }
@@ -717,4 +922,223 @@ body {
   font-size: 11px;
   color: var(--liquid-text-tertiary);
   user-select: none;
+}
+
+/* Ẩn thanh cuộn chat-body để loại bỏ thanh dọc không mong muốn trong khung chat */
+.chat-body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.chat-body::-webkit-scrollbar-track {
+  display: none;
+}
+
+.chat-body::-webkit-scrollbar-thumb {
+  display: none;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints - Giao diện Chat & Toàn ứng dụng
+   ========================================================================== */
+
+/* 1. Màn hình lớn & Maximized Desktop (>= 1200px) */
+@media (min-width: 1200px) {
+  .chat-messages {
+    max-width: 880px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .composer-wrapper {
+    max-width: 880px;
+  }
+}
+
+/* 2. Màn hình Tablet & Cửa sổ thu vừa (<= 900px) */
+@media (max-width: 900px) {
+  .chat-header {
+    height: 62px;
+    min-height: 62px;
+    padding: 0 18px;
+  }
+
+  .chat-body {
+    padding: 16px 18px;
+  }
+
+  .message-content-wrapper {
+    max-width: 80%;
+  }
+
+  .chat-footer {
+    padding: 0 18px 16px;
+  }
+}
+
+/* 3. Cửa sổ Compact / Chia đôi màn hình (<= 768px) */
+@media (max-width: 768px) {
+  .chat-header {
+    height: 58px;
+    min-height: 58px;
+    padding: 0 14px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-avatar-wrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .brand-name {
+    font-size: 15px;
+  }
+
+  .brand-subtitle {
+    font-size: 11px;
+  }
+
+  .header-meta {
+    gap: 8px;
+  }
+
+  .chat-body {
+    padding: 14px 14px;
+  }
+
+  .message-content-wrapper {
+    max-width: 86%;
+  }
+
+  .message-bubble {
+    padding: 9px 14px;
+    font-size: 14px;
+  }
+
+  .chat-footer {
+    padding: 0 14px 12px;
+  }
+
+  .composer-glass-panel {
+    padding: 5px 6px 5px 12px;
+    gap: 8px;
+  }
+
+  .send-button {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+/* 4. Cửa sổ hẹp / Mobile View (<= 640px) */
+@media (max-width: 640px) {
+  .brand-subtitle {
+    display: none;
+  }
+
+  .persistence-pill .persistence-label {
+    display: none;
+  }
+
+  .persistence-pill {
+    padding: 6px 10px;
+  }
+
+  .message-content-wrapper {
+    max-width: 90%;
+  }
+
+  .composer-hints {
+    display: none;
+  }
+
+  .composer-action-btn.mic-btn {
+    display: none;
+  }
+
+  .prompt-btn {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+/* 5. Cửa sổ siêu nhỏ (<= 480px) */
+@media (max-width: 480px) {
+  .chat-header {
+    height: 54px;
+    min-height: 54px;
+    padding: 0 10px;
+  }
+
+  .brand-avatar-wrapper {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-name {
+    font-size: 14px;
+  }
+
+  .message-content-wrapper {
+    max-width: 94%;
+  }
+
+  .message-bubble {
+    font-size: 13.5px;
+    padding: 8px 12px;
+  }
+
+  .msg-avatar-wrapper {
+    width: 28px;
+    height: 28px;
+  }
+
+  .chat-footer {
+    padding: 0 8px 8px;
+  }
+}
+
+/* 6. Chiều cao cửa sổ hạn chế (<= 600px height) */
+@media (max-height: 600px) {
+  .chat-empty-state {
+    padding: 16px 10px;
+  }
+
+  .empty-avatar-card {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 8px;
+  }
+
+  .empty-title {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .empty-subtitle {
+    font-size: 12px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .suggested-prompts {
+    gap: 6px;
+  }
+
+  .prompt-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .composer-hints {
+    display: none;
+  }
+
+  .chat-footer {
+    padding-bottom: 8px;
+  }
 }

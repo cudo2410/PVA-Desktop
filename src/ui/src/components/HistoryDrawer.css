@@ -1,0 +1,561 @@
+/* History Drawer & Confirmation Modal - Bám sát Figma (Apple iOS/iPadOS Dark trên Windows) */
+
+/* Overlay */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 80;
+  animation: fadeInOverlay 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity;
+}
+
+.drawer-overlay.closing {
+  animation: fadeOutOverlay 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOutOverlay {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Drawer Shell - Nằm ở bên phải màn hình theo đúng thiết kế Figma */
+.history-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: auto;
+  bottom: 0;
+  width: 380px;
+  max-width: 86vw;
+  background: #11151e;
+  border-left: 1px solid rgba(255, 255, 255, 0.09);
+  border-right: none;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.6);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  animation: slideInDrawerRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.history-drawer.closing {
+  animation: slideOutDrawerRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInDrawerRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutDrawerRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Header: Chiều cao và padding đúng chuẩn 64px và 24px để nút đóng |> nằm cùng vị trí tuyệt đối với nút mở <| */
+.drawer-header {
+  height: 64px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+}
+
+.drawer-title-group {
+  display: flex;
+  align-items: center;
+}
+
+.drawer-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* Nút đóng ngăn kéo hình vuông bo góc [ |> ] đồng bộ với nút mở [ <| ] trên Header */
+.drawer-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.2px solid rgba(255, 255, 255, 0.16);
+  color: #8e8e93;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+  user-select: none;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.drawer-close-btn:hover {
+  border-color: #10b981;
+  color: #34d399;
+}
+
+/* Search Bar */
+.drawer-search-wrapper {
+  padding: 14px 20px 8px;
+}
+
+.drawer-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  background: #171c26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  box-sizing: border-box;
+  transition: border-color 0.18s ease;
+}
+
+.drawer-search-box:focus-within {
+  border-color: #10b981;
+}
+
+.drawer-search-icon {
+  color: #8e8e93;
+  flex-shrink: 0;
+}
+
+.drawer-search-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 13.5px;
+  outline: none;
+  padding: 0;
+}
+
+.drawer-search-input::placeholder {
+  color: #8e8e93;
+}
+
+/* Action: New Chat - Chỉ đổi màu viền khi hover, không nhảy */
+.drawer-actions {
+  padding: 4px 20px 8px;
+}
+
+.new-chat-btn {
+  width: 100%;
+  padding: 9px 14px;
+  background: #171c26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: #e2e8f0;
+  font-size: 13.5px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+  box-shadow: none;
+}
+
+.new-chat-btn:hover {
+  border-color: #10b981;
+  color: #ffffff;
+}
+
+.new-chat-btn .btn-icon {
+  font-size: 15px;
+  line-height: 1;
+}
+
+/* Content Area */
+.drawer-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.drawer-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 0;
+  color: #94a3b8;
+  font-size: 13.5px;
+}
+
+.drawer-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 10px;
+  text-align: center;
+  color: #64748b;
+}
+
+.empty-drawer-icon {
+  font-size: 32px;
+  opacity: 0.6;
+}
+
+.empty-drawer-text {
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Conversation Cards */
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conversation-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  min-height: 64px;
+  box-sizing: border-box;
+  background: #171c26;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+  position: relative;
+}
+
+/* Khi hover: Cố định kích thước 100%, không co giãn, chỉ đổi màu viền sang xanh ngọc */
+.conversation-card:hover {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.conversation-card.active {
+  background: #171c26;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.conversation-card.active:hover {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #f1f5f9;
+  margin: 0;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Cố định font-weight trên cả bình thường và hover để chữ không bao giờ bị xê dịch hay giật */
+  transition: color 0.18s ease;
+}
+
+.conversation-card:hover .card-title {
+  color: #ffffff;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  height: 16px;
+}
+
+.card-time {
+  color: #8e8e93;
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 16px;
+  transition: color 0.18s ease;
+}
+
+.conversation-card:hover .card-time {
+  color: #34d399;
+}
+
+/* Nút ... hình vuông bo góc chuẩn Figma */
+.card-more-container {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-more-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #8e8e93;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  box-sizing: border-box;
+}
+
+.card-more-btn .more-dots {
+  font-size: 13px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.card-more-btn:hover,
+.card-more-btn.menu-open {
+  color: #34d399;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Dropdown menu khi bấm vào nút ... */
+.card-options-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 96px;
+  background: #1c2230;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  z-index: 60;
+}
+
+.card-option-item {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.card-option-item.danger {
+  color: #ef4444;
+}
+
+.card-option-item.danger:hover {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Confirmation Modal (Chuẩn iOS Alert trong Figma Screen 3) */
+.confirm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeInOverlay 0.18s ease;
+}
+
+.confirm-modal-box {
+  width: 320px;
+  max-width: 90vw;
+  background: #1c212c;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.confirm-modal-body {
+  padding: 22px 20px 18px;
+  text-align: center;
+}
+
+.confirm-modal-header {
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.confirm-modal-title {
+  font-size: 16.5px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  text-align: center;
+}
+
+.confirm-modal-message {
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.45;
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.confirm-modal-submessage {
+  font-size: 12px;
+  color: #8e8e93;
+  line-height: 1.45;
+  margin: 0;
+  text-align: center;
+}
+
+.confirm-modal-actions {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  height: 44px;
+}
+
+.confirm-modal-btn {
+  flex: 1;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-modal-btn.cancel {
+  color: #10b981;
+  font-weight: 500;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.confirm-modal-btn.cancel:hover {
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.confirm-modal-btn.danger {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.confirm-modal-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Ẩn thanh cuộn của Drawer Content để giao diện phẳng chuẩn iPadOS */
+.drawer-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.drawer-content::-webkit-scrollbar-track {
+  display: none;
+}
+
+.drawer-content::-webkit-scrollbar-thumb {
+  display: none;
+}
+
+/* Responsive Breakpoints - History Drawer & Confirmation Modal */
+@media (max-width: 900px) {
+  .drawer-header {
+    height: 62px;
+    min-height: 62px;
+    padding: 0 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .history-drawer {
+    width: 340px;
+  }
+
+  .drawer-header {
+    height: 58px;
+    min-height: 58px;
+    padding: 0 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .history-drawer {
+    width: 100vw;
+    max-width: 100vw;
+    border-left: none;
+  }
+
+  .drawer-header {
+    height: 54px;
+    min-height: 54px;
+    padding: 0 10px;
+  }
+
+  .confirm-modal-box {
+    width: 100%;
+    max-width: 300px;
+  }
+}

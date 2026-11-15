@@ -49,6 +49,9 @@ class MockChatModel implements ChatModel {
 }
 
 class MockConversationRepository implements ConversationRepository {
+  conversations: ConversationRecord[] = [
+    { id: 1, title: 'Test Conversation', createdAt: '2026-11-15' }
+  ]
   savedTurns: Array<{
     conversationId: number
     user: { role: 'user'; content: string }
@@ -57,29 +60,54 @@ class MockConversationRepository implements ConversationRepository {
   persistenceEnabled = true
 
   async getOrCreateActiveConversation(): Promise<ConversationRecord> {
-    return { id: 1, title: 'Test Conversation', createdAt: '2026-11-15' }
+    if (this.conversations.length === 0) {
+      const newConv = { id: 1, title: 'Test Conversation', createdAt: '2026-11-15' }
+      this.conversations.push(newConv)
+      return newConv
+    }
+    return this.conversations[this.conversations.length - 1]
   }
 
-  async getRecentMessages(): Promise<StoredMessage[]> {
+  async createConversation(title?: string): Promise<ConversationRecord> {
+    const newConv: ConversationRecord = {
+      id: this.conversations.length + 1,
+      title: title || `Hội thoại ${this.conversations.length + 1}`,
+      createdAt: '2026-11-15',
+      messageCount: 0
+    }
+    this.conversations.push(newConv)
+    return newConv
+  }
+
+  async listConversations(): Promise<ConversationRecord[]> {
+    return [...this.conversations].reverse()
+  }
+
+  async getConversationMessages(conversationId: number): Promise<StoredMessage[]> {
     const list: StoredMessage[] = []
     let id = 1
-    for (const turn of this.savedTurns) {
+    for (const turn of this.savedTurns.filter((t) => t.conversationId === conversationId)) {
       list.push({
         id: id++,
-        conversationId: 1,
+        conversationId,
         role: turn.user.role,
         content: turn.user.content,
         createdAt: '2026-11-15'
       })
       list.push({
         id: id++,
-        conversationId: 1,
+        conversationId,
         role: turn.assistant.role,
         content: turn.assistant.content,
         createdAt: '2026-11-15'
       })
     }
     return list
+  }
+
+  async getRecentMessages(conversationId?: number): Promise<StoredMessage[]> {
+    const targetId = conversationId || (this.conversations[0]?.id ?? 1)
+    return await this.getConversationMessages(targetId)
   }
 
   async saveTurnInTransaction(
@@ -92,6 +120,17 @@ class MockConversationRepository implements ConversationRepository {
       userMessageId: this.savedTurns.length * 2 - 1,
       assistantMessageId: this.savedTurns.length * 2
     }
+  }
+
+  async deleteConversation(conversationId: number): Promise<boolean> {
+    this.conversations = this.conversations.filter((c) => c.id !== conversationId)
+    this.savedTurns = this.savedTurns.filter((t) => t.conversationId !== conversationId)
+    return true
+  }
+
+  async updateConversationTitle(conversationId: number, title: string): Promise<void> {
+    const conv = this.conversations.find((c) => c.id === conversationId)
+    if (conv) conv.title = title
   }
 
   async getPersistenceEnabled(): Promise<boolean> {
@@ -160,18 +199,18 @@ describe('ChatService Domain Service', () => {
 
     // Lượt 1: Giới thiệu tên
     await service.send('Tôi tên là An')
-    expect(model.lastReceivedMessages).toHaveLength(2) // system + turn 1 user
+    expect(model.lastReceivedMessages).toHaveLength(2)
 
     // Lượt 2: Cung cấp tuổi
     await service.send('Tôi 25 tuổi')
-    expect(model.lastReceivedMessages).toHaveLength(4) // system + turn 1 (user, assistant) + turn 2 user
+    expect(model.lastReceivedMessages).toHaveLength(4)
     expect(model.lastReceivedMessages[1].content).toBe('Tôi tên là An')
     expect(model.lastReceivedMessages[2].content).toBe('Phản hồi: Tôi tên là An')
     expect(model.lastReceivedMessages[3].content).toBe('Tôi 25 tuổi')
 
     // Lượt 3: Hỏi lại thông tin đã cung cấp
     await service.send('Tôi tên gì và bao nhiêu tuổi?')
-    expect(model.lastReceivedMessages).toHaveLength(6) // system + turn 1 (2) + turn 2 (2) + turn 3 user
+    expect(model.lastReceivedMessages).toHaveLength(6)
     expect(model.lastReceivedMessages[0].role).toBe('system')
     expect(model.lastReceivedMessages[1].content).toBe('Tôi tên là An')
     expect(model.lastReceivedMessages[3].content).toBe('Tôi 25 tuổi')
@@ -182,13 +221,10 @@ describe('ChatService Domain Service', () => {
     const model = new MockChatModel()
     const service = new ChatService(model)
 
-    // Gửi 12 lượt
     for (let i = 1; i <= 12; i++) {
       await service.send(`Tin nhắn số ${i}`)
     }
 
-    // Context gửi tới model gồm system prompt (1) + tối đa 20 messages gần nhất + current (đã gồm trong 20)
-    // Tổng số message trong memory: 20 messages (tương đương 10 lượt gần nhất: từ lượt 3 đến lượt 12)
     const context = service.getRecentContext()
     expect(context).toHaveLength(20)
     expect(context[0].content).toBe('Tin nhắn số 3')
@@ -214,8 +250,44 @@ describe('ChatService Domain Service', () => {
 
     await service.send('Không lưu tin nhắn này')
     expect(repo.savedTurns).toHaveLength(0)
-    // Nhưng vẫn lưu trong bộ nhớ tạm phiên làm việc
     expect(service.getRecentContext()).toHaveLength(2)
+  })
+
+  it('UC-06: Quản lý danh sách, xem chi tiết, tạo mới và xóa cuộc hội thoại', async () => {
+    const model = new MockChatModel()
+    const repo = new MockConversationRepository()
+    const service = new ChatService(model, { repository: repo })
+    await service.init()
+
+    // 1. Gửi tin nhắn ở cuộc hội thoại 1
+    await service.send('Hỏi đáp ở hội thoại 1')
+    expect(service.getActiveConversationId()).toBe(1)
+
+    // 2. Tạo cuộc hội thoại mới
+    const conv2 = await service.startNewConversation('Hội thoại số 2')
+    expect(conv2.id).toBe(2)
+    expect(service.getActiveConversationId()).toBe(2)
+    expect(service.getRecentContext()).toHaveLength(0)
+
+    // 3. Gửi tin nhắn ở cuộc hội thoại 2
+    await service.send('Tin nhắn ở hội thoại 2')
+    expect(service.getRecentContext()).toHaveLength(2)
+
+    // 4. Lấy danh sách cuộc hội thoại
+    const list = await service.listConversations()
+    expect(list.length).toBe(2)
+
+    // 5. Chuyển đổi quay lại cuộc hội thoại 1
+    const msgs1 = await service.switchConversation(1)
+    expect(msgs1).toHaveLength(2)
+    expect(service.getActiveConversationId()).toBe(1)
+    expect(service.getRecentContext()).toHaveLength(2)
+
+    // 6. Xóa cuộc hội thoại 2
+    const deleted = await service.deleteConversation(2)
+    expect(deleted).toBe(true)
+    const afterDelete = await service.listConversations()
+    expect(afterDelete.some((c) => c.id === 2)).toBe(false)
   })
 
   it('checkHealth() ủy quyền chính xác cho ChatModel', async () => {

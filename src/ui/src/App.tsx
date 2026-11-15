@@ -1,11 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
 import avaImg from './assets/ava.jpg'
+import { HistoryDrawer } from './components/HistoryDrawer'
+import './components/HistoryDrawer.css'
+import { formatFigmaTimestamp, formatTimeHHmm } from './utils/dateFormat'
 
 export interface ChatMessageItem {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: string
+  rawCreatedAt?: string | Date
   status?: 'processing' | 'streaming' | 'completed' | 'error'
   error?: string
 }
@@ -19,8 +23,9 @@ function App(): React.JSX.Element {
     'checking' | 'starting' | 'healthy' | 'unhealthy' | 'model_missing'
   >('checking')
   const [healthReason, setHealthReason] = useState<string | undefined>(undefined)
-  const [activeTimestampId, setActiveTimestampId] = useState<string | null>(null)
   const [persistenceEnabled, setPersistenceEnabled] = useState(true)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [activeConversationId, setActiveConversationId] = useState<number | undefined>(undefined)
 
   const isCheckingRef = useRef(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -56,6 +61,16 @@ function App(): React.JSX.Element {
             setPersistenceEnabled(pRes.enabled)
           }
         }
+        if (window.api?.chat?.listConversations) {
+          const listRes = await window.api.chat.listConversations()
+          if (
+            listRes?.success &&
+            Array.isArray(listRes.conversations) &&
+            listRes.conversations.length > 0
+          ) {
+            setActiveConversationId(listRes.conversations[0].id)
+          }
+        }
         if (window.api?.chat?.loadHistory) {
           const hRes = await window.api.chat.loadHistory()
           if (hRes?.success && Array.isArray(hRes.messages) && hRes.messages.length > 0) {
@@ -65,12 +80,8 @@ function App(): React.JSX.Element {
                 id: `history-${m.id}`,
                 role: m.role as 'user' | 'assistant',
                 content: m.content,
-                timestamp: m.createdAt
-                  ? new Date(m.createdAt).toLocaleTimeString('vi-VN', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                  : '',
+                rawCreatedAt: m.createdAt,
+                timestamp: m.createdAt ? formatTimeHHmm(m.createdAt) : '',
                 status: 'completed'
               }))
             setMessages(loaded)
@@ -96,8 +107,74 @@ function App(): React.JSX.Element {
     }
   }
 
-  const handleBubbleClick = (id: string): void => {
-    setActiveTimestampId((prev) => (prev === id ? null : id))
+  const handleSelectConversation = async (id: number): Promise<void> => {
+    setActiveConversationId(id)
+    setError(null)
+    try {
+      if (window.api?.chat?.switchConversation) {
+        const res = await window.api.chat.switchConversation(id)
+        if (res.success && Array.isArray(res.messages)) {
+          const loaded: ChatMessageItem[] = res.messages
+            .filter((m) => m.role === 'user' || m.role === 'assistant')
+            .map((m) => ({
+              id: `history-${m.id}`,
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+              rawCreatedAt: m.createdAt,
+              timestamp: m.createdAt ? formatTimeHHmm(m.createdAt) : '',
+              status: 'completed'
+            }))
+          setMessages(loaded)
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi chuyển cuộc hội thoại:', err)
+    }
+    setTimeout(() => textareaRef.current?.focus(), 50)
+  }
+
+  const handleNewConversation = async (): Promise<void> => {
+    setError(null)
+    setMessages([])
+    try {
+      if (window.api?.chat?.createConversation) {
+        const res = await window.api.chat.createConversation()
+        if (res.success && res.conversation) {
+          setActiveConversationId(res.conversation.id)
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi tạo cuộc hội thoại mới:', err)
+    }
+    setTimeout(() => textareaRef.current?.focus(), 50)
+  }
+
+  const handleDeleteConversation = async (id: number): Promise<void> => {
+    try {
+      if (window.api?.chat?.deleteConversation) {
+        await window.api.chat.deleteConversation(id)
+        if (activeConversationId === id) {
+          const hRes = await window.api?.chat?.loadHistory()
+          if (hRes?.success && Array.isArray(hRes.messages) && hRes.messages.length > 0) {
+            const loaded: ChatMessageItem[] = hRes.messages
+              .filter((m) => m.role === 'user' || m.role === 'assistant')
+              .map((m) => ({
+                id: `history-${m.id}`,
+                role: m.role as 'user' | 'assistant',
+                content: m.content,
+                rawCreatedAt: m.createdAt,
+                timestamp: m.createdAt ? formatTimeHHmm(m.createdAt) : '',
+                status: 'completed'
+              }))
+            setMessages(loaded)
+          } else {
+            setMessages([])
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi khi xóa cuộc hội thoại:', err)
+    }
   }
 
   const checkHealth = async (isManual = false): Promise<void> => {
@@ -136,7 +213,7 @@ function App(): React.JSX.Element {
 
   // Adaptive Polling: Lần đầu chạy sau 100ms; khi offline/starting thử lại nhanh (2.5s) tối đa 5 lần (~12.5s); sau đó giãn ra 30s
   useEffect(() => {
-    let delay = 30000
+    let delay: number
 
     if (healthStatus === 'checking') {
       delay = 100
@@ -147,13 +224,13 @@ function App(): React.JSX.Element {
       } else {
         delay = 30000
       }
-    } else if (healthStatus === 'healthy') {
+    } else {
       retryCountRef.current = 0
       delay = 30000
     }
 
     const timer = setTimeout(() => {
-      void checkHealth()
+      void checkHealth(false)
     }, delay)
 
     return (): void => clearTimeout(timer)
@@ -166,7 +243,8 @@ function App(): React.JSX.Element {
     }
 
     setError(null)
-    const now = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+    const nowDate = new Date()
+    const nowTimeStr = formatTimeHHmm(nowDate)
     const userMsgId = `${Date.now()}-user`
     const assistantMsgId = `${Date.now()}-assistant`
 
@@ -174,7 +252,8 @@ function App(): React.JSX.Element {
       id: userMsgId,
       role: 'user',
       content: contentToSend,
-      timestamp: now,
+      rawCreatedAt: nowDate,
+      timestamp: nowTimeStr,
       status: 'completed'
     }
 
@@ -183,7 +262,8 @@ function App(): React.JSX.Element {
       id: assistantMsgId,
       role: 'assistant',
       content: '',
-      timestamp: now,
+      rawCreatedAt: nowDate,
+      timestamp: nowTimeStr,
       status: 'processing'
     }
 
@@ -293,6 +373,12 @@ function App(): React.JSX.Element {
     }
   }
 
+  // Tìm index của tin nhắn user cuối cùng để hiển thị trạng thái "Đã gửi" / "Đã đọc" chuẩn Figma
+  const lastUserMsgIndex = messages.reduce(
+    (lastIdx, msg, idx) => (msg.role === 'user' ? idx : lastIdx),
+    -1
+  )
+
   return (
     <div className="chat-app">
       {/* Background ambient lighting for Apple Liquid Glass */}
@@ -302,28 +388,38 @@ function App(): React.JSX.Element {
       <header className="chat-header">
         <div className="brand">
           <div className="brand-avatar-wrapper">
-            <img src={avaImg} alt="Sinon Avatar" className="brand-avatar-img" />
+            <img src={avaImg} alt="Asada Sinon Avatar" className="brand-avatar-img" />
+            <span className="brand-avatar-status-dot" aria-label="Trạng thái trực tuyến" />
           </div>
           <div className="brand-title">
             <span className="brand-name">Asada Sinon</span>
+            <span className="brand-subtitle">
+              {isGenerating
+                ? 'Đang phản hồi...'
+                : healthStatus === 'healthy'
+                  ? 'Trợ lý ảo thông minh · Sẵn sàng'
+                  : healthStatus === 'starting'
+                    ? 'Đang khởi động Ollama...'
+                    : 'Ngoại tuyến'}
+            </span>
           </div>
         </div>
 
         <div className="header-meta">
-          {/* Toggle bật/tắt lưu lịch sử */}
+          {/* Toggle bật/tắt lưu lịch sử: Đổi "Không lưu" thành "Đoạn chat tạm thời" */}
           <button
             type="button"
             className={`persistence-pill ${persistenceEnabled ? 'active' : 'inactive'}`}
             onClick={() => void handleTogglePersistence()}
             title={
               persistenceEnabled
-                ? 'Đang bật lưu lịch sử (Bấm để tắt)'
-                : 'Đang tắt lưu lịch sử (Bấm để bật)'
+                ? 'Đang bật lưu lịch sử (Bấm để chuyển sang Đoạn chat tạm thời)'
+                : 'Đang ở chế độ Đoạn chat tạm thời (Bấm để bật lưu lịch sử)'
             }
           >
-            <span className="persistence-icon">{persistenceEnabled ? '💾' : '🚫'}</span>
+            <span className="persistence-icon">{persistenceEnabled ? '💾' : '🕒'}</span>
             <span className="persistence-label">
-              {persistenceEnabled ? 'Lưu lịch sử' : 'Không lưu'}
+              {persistenceEnabled ? 'Lưu lịch sử' : 'Đoạn chat tạm thời'}
             </span>
           </button>
 
@@ -360,6 +456,17 @@ function App(): React.JSX.Element {
               </span>
             </div>
           )}
+
+          {/* Nút mở/đóng Lịch sử trò chuyện ở góc phải của header */}
+          <button
+            type="button"
+            className={`history-drawer-toggle-btn ${isHistoryOpen ? 'is-open' : ''}`}
+            onClick={() => setIsHistoryOpen((prev) => !prev)}
+            title={isHistoryOpen ? 'Đóng lịch sử trò chuyện' : 'Mở lịch sử trò chuyện'}
+            aria-label={isHistoryOpen ? 'Đóng lịch sử' : 'Mở lịch sử'}
+          >
+            <span className="drawer-icon-symbol">{isHistoryOpen ? '|>' : '<|'}</span>
+          </button>
         </div>
       </header>
 
@@ -370,7 +477,7 @@ function App(): React.JSX.Element {
             <div className="empty-avatar-card">
               <img src={avaImg} alt="Sinon Avatar" className="empty-avatar-img" />
             </div>
-            <h1 className="empty-title">Xin chào! Tôi là Sinon</h1>
+            <h1 className="empty-title">Xin chào! Tôi là Asada Sinon</h1>
             <p className="empty-subtitle">
               Trợ lý ảo cá nhân thông minh hoạt động hoàn toàn cục bộ trên máy tính của bạn với mô
               hình ngôn ngữ AI bảo mật tuyệt đối.
@@ -386,9 +493,9 @@ function App(): React.JSX.Element {
               <button
                 type="button"
                 className="prompt-btn"
-                onClick={() => handleSend('Hãy tóm tắt ngắn gọn vai trò của Sinon.')}
+                onClick={() => handleSend('Hãy tóm tắt ngắn gọn vai trò của Asada Sinon.')}
               >
-                💡 Tóm tắt vai trò của Sinon
+                💡 Tóm tắt vai trò của Asada Sinon
               </button>
               <button
                 type="button"
@@ -401,51 +508,58 @@ function App(): React.JSX.Element {
           </div>
         ) : (
           <div className="chat-messages">
-            {messages.map((msg) => {
-              const isTimestampVisible = activeTimestampId === msg.id
+            {/* Mốc thời gian chuẩn Figma: Hôm nay, 21:30 / Hôm qua, 10:11 / dd/mm/yyyy, giờ */}
+            <div className="chat-date-divider">
+              {formatFigmaTimestamp(messages[0]?.rawCreatedAt || new Date())}
+            </div>
+            {messages.map((msg, index) => {
+              const isLastUserMsg = msg.role === 'user' && index === lastUserMsgIndex
+              const userStatusLabel = isLastUserMsg ? 'Đã gửi' : 'Đã đọc'
 
               return (
                 <div key={msg.id} className={`message-row ${msg.role}`}>
-                  {msg.role === 'assistant' && (
-                    <div className="msg-avatar-wrapper">
-                      <img src={avaImg} alt="Sinon" className="msg-avatar-img" />
-                    </div>
-                  )}
-
                   <div className="message-content-wrapper">
-                    <div
-                      className={`message-bubble ${
-                        msg.status === 'processing' ? 'message-processing' : ''
-                      } ${msg.status === 'error' ? 'message-error' : ''}`}
-                      onClick={() => handleBubbleClick(msg.id)}
-                      title="Bấm để xem thời gian"
-                    >
-                      {/* Nội dung tin nhắn theo phong cách Facebook Messenger - Không hiển thị nhãn Bạn/Sinon */}
-                      {msg.status === 'processing' ? (
-                        <div className="processing-state-box">
-                          <div className="liquid-pulse-dots">
-                            <span className="liquid-dot" />
-                            <span className="liquid-dot" />
-                            <span className="liquid-dot" />
-                          </div>
-                          <span className="processing-label">Đang xử lý...</span>
-                        </div>
-                      ) : msg.status === 'error' ? (
-                        <div className="bubble-error-content">
-                          <span className="bubble-error-icon">⚠️</span>
-                          <span>{msg.error || 'Đã xảy ra lỗi khi tạo phản hồi.'}</span>
-                        </div>
-                      ) : (
-                        <div className="message-text">
-                          {msg.content}
-                          {msg.status === 'streaming' && <span className="streaming-cursor" />}
+                    <div className="bubble-with-avatar">
+                      {msg.role === 'assistant' && (
+                        <div className="msg-avatar-wrapper">
+                          <img src={avaImg} alt="Sinon" className="msg-avatar-img" />
                         </div>
                       )}
+                      <div
+                        className={`message-bubble ${
+                          msg.status === 'processing' ? 'message-processing' : ''
+                        } ${msg.status === 'error' ? 'message-error' : ''}`}
+                      >
+                        {msg.status === 'processing' ? (
+                          <div className="processing-state-box">
+                            <div className="liquid-pulse-dots">
+                              <span className="liquid-dot" />
+                              <span className="liquid-dot" />
+                              <span className="liquid-dot" />
+                            </div>
+                            <span className="processing-label">Đang xử lý...</span>
+                          </div>
+                        ) : msg.status === 'error' ? (
+                          <div className="bubble-error-content">
+                            <span className="bubble-error-icon">⚠️</span>
+                            <span>{msg.error || 'Đã xảy ra lỗi khi tạo phản hồi.'}</span>
+                          </div>
+                        ) : (
+                          <div className="message-text">
+                            {msg.content}
+                            {msg.status === 'streaming' && <span className="streaming-cursor" />}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Thời gian gửi chỉ hiển thị khi người dùng bấm vào tin nhắn */}
-                    {isTimestampVisible && msg.timestamp && (
-                      <div className="bubble-timestamp-popup">{msg.timestamp}</div>
+                    {/* Mốc thời gian hiển thị dưới bong bóng chat như trong Figma */}
+                    {msg.timestamp && (
+                      <div className="bubble-timestamp-popup">
+                        {msg.role === 'user'
+                          ? `${msg.timestamp} · ${userStatusLabel}`
+                          : msg.timestamp}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -475,35 +589,100 @@ function App(): React.JSX.Element {
         </div>
       )}
 
-      {/* Footer / Floating Glass Composer */}
+      {/* Footer / Floating Glass Composer bám sát Figma */}
       <footer className="chat-footer">
         <div className="composer-wrapper">
           <div className="composer-glass-panel">
+            {/* Nút + thao tác nhanh phong cách iPadOS: Không tự nhảy câu hỏi, không highlight khung chat */}
+            <button
+              type="button"
+              className="composer-action-btn plus-btn"
+              onClick={(e) => {
+                e.preventDefault()
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault()
+              }}
+              title="Thao tác nhanh"
+              aria-label="Thao tác nhanh"
+            >
+              <span className="action-symbol">＋</span>
+            </button>
+
             <textarea
               ref={textareaRef}
               rows={1}
               className="chat-input"
-              placeholder="Nhập tin nhắn cho Sinon..."
+              placeholder="iMessage (Nhập tin nhắn cho Asada Sinon...)"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isGenerating}
             />
+
+            {/* Nút micro dictation phong cách iOS */}
+            <button
+              type="button"
+              className="composer-action-btn mic-btn"
+              onClick={() => {
+                textareaRef.current?.focus()
+              }}
+              title="Nhập bằng giọng nói (Voice input)"
+              aria-label="Micro"
+            >
+              <svg
+                className="mic-svg"
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="currentColor"
+              >
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+              </svg>
+            </button>
+
+            {/* Nút gửi phong cách Hologram Emerald Apple */}
             <button
               type="button"
               className="send-button"
               disabled={!input.trim() || isGenerating}
               onClick={() => handleSend()}
+              title="Gửi tin nhắn (Enter)"
+              aria-label="Gửi tin nhắn"
             >
-              <span>{isGenerating ? 'Đang phản hồi...' : 'Gửi'}</span>
+              {isGenerating ? (
+                <span className="send-spinner" />
+              ) : (
+                <svg
+                  className="send-arrow-svg"
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  fill="none"
+                  stroke="#ffffff"
+                  strokeWidth="2.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </svg>
+              )}
             </button>
-          </div>
-          <div className="composer-hints">
-            <span>Nhấn Enter để gửi, Shift + Enter để xuống dòng</span>
-            <span>Local AI • Bảo mật riêng tư dữ liệu</span>
           </div>
         </div>
       </footer>
+
+      {/* History Drawer (UC-06) */}
+      <HistoryDrawer
+        isOpen={isHistoryOpen}
+        activeConversationId={activeConversationId}
+        onClose={() => setIsHistoryOpen(false)}
+        onSelectConversation={(id) => void handleSelectConversation(id)}
+        onNewConversation={() => void handleNewConversation()}
+        onDeleteConversation={(id) => handleDeleteConversation(id)}
+      />
     </div>
   )
 }

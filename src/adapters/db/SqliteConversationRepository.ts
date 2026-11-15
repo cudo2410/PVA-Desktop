@@ -26,6 +26,20 @@ export class SqliteConversationRepository implements ConversationRepository {
       return row
     }
 
+    return await this.createConversation(defaultTitle)
+  }
+
+  async createConversation(title?: string): Promise<ConversationRecord> {
+    const defaultTitle =
+      title ||
+      `Hội thoại ${new Date().toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit'
+      })} ${new Date().toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })}`
+
     const insertStmt = this.db.prepare('INSERT INTO conversations (title) VALUES (?)')
     const result = insertStmt.run(defaultTitle)
     const newId = Number(result.lastInsertRowid)
@@ -34,7 +48,46 @@ export class SqliteConversationRepository implements ConversationRepository {
       .prepare('SELECT id, title, created_at as createdAt FROM conversations WHERE id = ?')
       .get(newId) as { id: number; title: string; createdAt: string }
 
-    return created
+    return {
+      ...created,
+      messageCount: 0
+    }
+  }
+
+  async listConversations(): Promise<ConversationRecord[]> {
+    const rows = this.db
+      .prepare(
+        `SELECT
+           c.id,
+           c.title,
+           c.created_at as createdAt,
+           COUNT(m.id) as messageCount,
+           (
+             SELECT content FROM messages
+             WHERE conversation_id = c.id
+             ORDER BY id DESC LIMIT 1
+           ) as lastMessage
+         FROM conversations c
+         LEFT JOIN messages m ON c.id = m.conversation_id
+         GROUP BY c.id
+         ORDER BY c.id DESC`
+      )
+      .all() as ConversationRecord[]
+
+    return rows
+  }
+
+  async getConversationMessages(conversationId: number): Promise<StoredMessage[]> {
+    const rows = this.db
+      .prepare(
+        `SELECT id, conversation_id as conversationId, role, content, created_at as createdAt
+         FROM messages
+         WHERE conversation_id = ?
+         ORDER BY id ASC`
+      )
+      .all(conversationId) as StoredMessage[]
+
+    return rows
   }
 
   async getRecentMessages(conversationId: number, limit = 20): Promise<StoredMessage[]> {
@@ -75,6 +128,15 @@ export class SqliteConversationRepository implements ConversationRepository {
     })
 
     return Promise.resolve(runTx())
+  }
+
+  async deleteConversation(conversationId: number): Promise<boolean> {
+    const res = this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId)
+    return res.changes > 0
+  }
+
+  async updateConversationTitle(conversationId: number, title: string): Promise<void> {
+    this.db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(title, conversationId)
   }
 
   async getPersistenceEnabled(): Promise<boolean> {

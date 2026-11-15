@@ -12,6 +12,8 @@ export interface ConversationRecord {
   id: number
   title: string
   createdAt: string
+  messageCount?: number
+  lastMessage?: string
 }
 
 export interface ConversationRepository {
@@ -25,4 +27,9 @@ export interface ConversationRepository {
   getPersistenceEnabled(): Promise<boolean>
   setPersistenceEnabled(enabled: boolean): Promise<void>
   clearHistory(conversationId?: number): Promise<void>
+  listConversations(): Promise<ConversationRecord[]>
+  getConversationMessages(conversationId: number): Promise<StoredMessage[]>
+  deleteConversation(conversationId: number): Promise<boolean>
+  createConversation(title?: string): Promise<ConversationRecord>
+  updateConversationTitle(conversationId: number, title: string): Promise<void>
 }

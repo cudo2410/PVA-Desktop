@@ -53,6 +53,14 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
     * Ẩn thông báo "Ollama sẵn sàng" khi hệ thống ở trạng thái hoạt động tốt (`healthy`), chỉ hiển thị trạng thái khi đang kết nối hoặc có sự cố.
     * Ẩn tag `qwen 3.1` (`qwen3:1.7b`) trên Header để giao diện tối giản, hiện đại và tập trung vào nội dung trò chuyện.
 
+### 2.5. Đáp ứng hoàn chỉnh UC-06: Màn hình lịch sử hội thoại
+- **Đặc tả bổ sung tại Mục 5 (Use Case Specification - UC-06):**
+  - **Danh sách hội thoại (Basic Flow):** Nút `🕒 Lịch sử` trên Header mở thanh trượt Liquid Glass Drawer hiển thị danh sách hội thoại lưu trong SQLite, sắp xếp theo thời gian mới nhất, kèm số lượng tin nhắn và đoạn trích tin nhắn cuối.
+  - **Xem chi tiết & Chuyển đổi ngữ cảnh (Flow 4-6):** Bấm chọn một cuộc hội thoại sẽ đóng drawer và tải toàn bộ tin nhắn chi tiết lên giao diện chính, đồng thời cập nhật ngữ cảnh trượt trong `ChatService` để người dùng tiếp tục trò chuyện liền mạch.
+  - **Tạo hội thoại mới:** Nút `＋ Cuộc trò chuyện mới` cho phép bắt đầu phiên làm việc mới độc lập.
+  - **Xóa có xác nhận (Confirmation Dialog):** Xóa cuộc hội thoại yêu cầu xác nhận qua Modal an toàn (`ConfirmModal`), tự động cascade xóa sạch các tin nhắn và chỉ mục `messages_fts` tương ứng nhờ foreign keys SQLite.
+  - **Trạng thái rỗng (Alternative Flow A1):** Hiển thị giao diện thân thiện "Chưa có cuộc trò chuyện nào được lưu" khi chưa có dữ liệu.
+
 ---
 
 ## 3. Cập nhật các bảng đối chiếu Architecture & IPC Contracts
@@ -61,8 +69,18 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
   - `chat:history:get-persistence`: Đọc trạng thái cấu hình lưu lịch sử.
   - `chat:history:set-persistence`: Bật hoặc tắt lưu lịch sử.
   - `chat:history:clear`: Xóa lịch sử hội thoại hiện tại.
+  - `chat:conversations:list`: Lấy danh sách tất cả cuộc hội thoại kèm số tin nhắn.
+  - `chat:conversations:get`: Lấy chi tiết tin nhắn theo mã cuộc hội thoại.
+  - `chat:conversations:switch`: Chuyển đổi cuộc hội thoại hoạt động và nạp lại ngữ cảnh.
+  - `chat:conversations:create`: Khởi tạo cuộc hội thoại mới.
+  - `chat:conversations:delete`: Xóa cuộc hội thoại và cascade tin nhắn liên quan.
 - **Bổ sung Preload Interface:**
   - `window.api.chat.loadHistory()`
   - `window.api.chat.getPersistence()`
   - `window.api.chat.setPersistence(enabled: boolean)`
   - `window.api.chat.clearHistory()`
+  - `window.api.chat.listConversations()`
+  - `window.api.chat.getConversation(id: number)`
+  - `window.api.chat.switchConversation(id: number)`
+  - `window.api.chat.createConversation(title?: string)`
+  - `window.api.chat.deleteConversation(id: number)`

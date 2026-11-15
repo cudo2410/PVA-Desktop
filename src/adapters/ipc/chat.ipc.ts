@@ -185,4 +185,78 @@ export function registerChatIpc(chatService: ChatService): void {
       }
     }
   })
+
+  ipcMain.handle('chat:conversations:list', async () => {
+    try {
+      const conversations = await chatService.listConversations()
+      return { success: true, conversations }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể lấy danh sách cuộc hội thoại.'
+      }
+    }
+  })
+
+  ipcMain.handle('chat:conversations:get', async (_, conversationId: unknown) => {
+    const id = Number(conversationId)
+    if (!id || isNaN(id)) {
+      return { success: false, error: 'Mã cuộc hội thoại không hợp lệ.' }
+    }
+    try {
+      const messages = await chatService.getConversationMessages(id)
+      return { success: true, messages }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể lấy chi tiết cuộc hội thoại.'
+      }
+    }
+  })
+
+  ipcMain.handle('chat:conversations:switch', async (_, conversationId: unknown) => {
+    const id = Number(conversationId)
+    if (!id || isNaN(id)) {
+      return { success: false, error: 'Mã cuộc hội thoại không hợp lệ.' }
+    }
+    try {
+      const messages = await chatService.switchConversation(id)
+      return { success: true, messages }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể chuyển đổi cuộc hội thoại.'
+      }
+    }
+  })
+
+  ipcMain.handle('chat:conversations:create', async (_, title?: unknown) => {
+    try {
+      const conversation = await chatService.startNewConversation(
+        typeof title === 'string' ? title : undefined
+      )
+      return { success: true, conversation }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể tạo cuộc hội thoại mới.'
+      }
+    }
+  })
+
+  ipcMain.handle('chat:conversations:delete', async (_, conversationId: unknown) => {
+    const id = Number(conversationId)
+    if (!id || isNaN(id)) {
+      return { success: false, error: 'Mã cuộc hội thoại không hợp lệ.' }
+    }
+    try {
+      const deleted = await chatService.deleteConversation(id)
+      return { success: deleted }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể xóa cuộc hội thoại.'
+      }
+    }
+  })
 }

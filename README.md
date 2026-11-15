@@ -387,6 +387,11 @@ Các file sau khi đóng gói sẽ được tạo ra tại thư mục `dist/`.
   - [x] Triển khai `SqliteConversationRepository` lưu cặp tin nhắn trong SQLite Transaction nguyên tử.
   - [x] Tự động tải lại lịch sử hội thoại khi ứng dụng khởi động lại.
   - [x] Kiểm thử tự động đạt chuẩn 3 lượt hội thoại liên tiếp (FR-01).
+- [x] **Màn hình lịch sử hội thoại (UC-06)**
+  - [x] Thanh trượt Liquid Glass Drawer hiển thị danh sách hội thoại lưu trữ theo thứ tự mới nhất.
+  - [x] Xem chi tiết nội dung cuộc hội thoại và chuyển đổi phiên làm việc liền mạch.
+  - [x] Tạo cuộc trò chuyện mới để bắt đầu phiên độc lập.
+  - [x] Xóa cuộc hội thoại có hộp thoại xác nhận (ConfirmModal) và cascade sạch tin nhắn.
 - [ ] **Quản lý công việc (Task Management)**
   - [ ] Bảng theo dõi và quản lý công việc (Todo List).
   - [ ] Triển khai các Repository SQLite lưu `tasks` và `reminders`.

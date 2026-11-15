@@ -12,6 +12,14 @@ const api: PvaApi = {
     setPersistence: (enabled: boolean) =>
       ipcRenderer.invoke('chat:history:set-persistence', enabled),
     clearHistory: () => ipcRenderer.invoke('chat:history:clear'),
+    listConversations: () => ipcRenderer.invoke('chat:conversations:list'),
+    getConversation: (conversationId: number) =>
+      ipcRenderer.invoke('chat:conversations:get', conversationId),
+    switchConversation: (conversationId: number) =>
+      ipcRenderer.invoke('chat:conversations:switch', conversationId),
+    createConversation: (title?: string) => ipcRenderer.invoke('chat:conversations:create', title),
+    deleteConversation: (conversationId: number) =>
+      ipcRenderer.invoke('chat:conversations:delete', conversationId),
     stream: (content: string, callbacks: ChatStreamCallbacks) => {
       const requestId =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'

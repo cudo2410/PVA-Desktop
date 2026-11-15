@@ -95,4 +95,69 @@ describe('SqliteConversationRepository', () => {
     await repo.clearHistory(conv.id)
     expect(await repo.getRecentMessages(conv.id)).toHaveLength(0)
   })
+
+  it('6. listConversations() trả về danh sách hội thoại kèm số tin nhắn và tin nhắn cuối', async () => {
+    const conv1 = await repo.createConversation('Hội thoại 1')
+    await repo.saveTurnInTransaction(
+      conv1.id,
+      { role: 'user', content: 'Tin nhắn đầu tiên' },
+      { role: 'assistant', content: 'Phản hồi đầu tiên' }
+    )
+
+    const conv2 = await repo.createConversation('Hội thoại 2')
+    await repo.saveTurnInTransaction(
+      conv2.id,
+      { role: 'user', content: 'Chào hội thoại 2' },
+      { role: 'assistant', content: 'Chào bạn ở hội thoại 2' }
+    )
+
+    const list = await repo.listConversations()
+    expect(list.length).toBeGreaterThanOrEqual(2)
+    // Sắp xếp ID giảm dần (mới nhất lên đầu)
+    expect(list[0].id).toBe(conv2.id)
+    expect(list[0].title).toBe('Hội thoại 2')
+    expect(list[0].messageCount).toBe(2)
+    expect(list[0].lastMessage).toBe('Chào bạn ở hội thoại 2')
+  })
+
+  it('7. getConversationMessages() trả về toàn bộ tin nhắn chi tiết theo thứ tự tăng dần', async () => {
+    const conv = await repo.createConversation('Xem chi tiết')
+    await repo.saveTurnInTransaction(
+      conv.id,
+      { role: 'user', content: 'A' },
+      { role: 'assistant', content: 'B' }
+    )
+    await repo.saveTurnInTransaction(
+      conv.id,
+      { role: 'user', content: 'C' },
+      { role: 'assistant', content: 'D' }
+    )
+
+    const msgs = await repo.getConversationMessages(conv.id)
+    expect(msgs).toHaveLength(4)
+    expect(msgs[0].content).toBe('A')
+    expect(msgs[1].content).toBe('B')
+    expect(msgs[2].content).toBe('C')
+    expect(msgs[3].content).toBe('D')
+  })
+
+  it('8. deleteConversation() xóa cuộc hội thoại và tự động cascade xóa tin nhắn', async () => {
+    const conv = await repo.createConversation('Để xóa')
+    await repo.saveTurnInTransaction(
+      conv.id,
+      { role: 'user', content: 'Tin nhắn cần xóa' },
+      { role: 'assistant', content: 'Phản hồi cần xóa' }
+    )
+
+    const deleted = await repo.deleteConversation(conv.id)
+    expect(deleted).toBe(true)
+
+    // Kiểm tra cuộc hội thoại không còn
+    const list = await repo.listConversations()
+    expect(list.some((c) => c.id === conv.id)).toBe(false)
+
+    // Kiểm tra tin nhắn bên trong cũng đã bị cascade xóa
+    const msgs = await repo.getConversationMessages(conv.id)
+    expect(msgs).toHaveLength(0)
+  })
 })

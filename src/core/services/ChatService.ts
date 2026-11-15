@@ -1,6 +1,10 @@
 import { ChatModel, ChatModelOptions, ChatModelHealth } from '../ports/ChatModel'
 import { Message } from '../models/ChatMessage'
-import { ConversationRepository, StoredMessage } from '../ports/ConversationRepository'
+import {
+  ConversationRecord,
+  ConversationRepository,
+  StoredMessage
+} from '../ports/ConversationRepository'
 
 export interface ChatServiceResponse {
   text: string
@@ -33,6 +37,10 @@ export class ChatService {
 
   getRecentContext(): readonly Message[] {
     return this.recentMessages
+  }
+
+  getActiveConversationId(): number | undefined {
+    return this.activeConversationId
   }
 
   async init(): Promise<void> {
@@ -72,6 +80,83 @@ export class ChatService {
       content: m.content,
       createdAt: new Date().toISOString()
     }))
+  }
+
+  async listConversations(): Promise<ConversationRecord[]> {
+    if (this.repository) {
+      return await this.repository.listConversations()
+    }
+    return [
+      {
+        id: this.activeConversationId || 1,
+        title: 'Hội thoại hiện tại',
+        createdAt: new Date().toISOString(),
+        messageCount: this.recentMessages.length
+      }
+    ]
+  }
+
+  async getConversationMessages(conversationId: number): Promise<StoredMessage[]> {
+    if (this.repository) {
+      return await this.repository.getConversationMessages(conversationId)
+    }
+    return this.recentMessages.map((m, idx) => ({
+      id: idx + 1,
+      conversationId,
+      role: m.role,
+      content: m.content,
+      createdAt: new Date().toISOString()
+    }))
+  }
+
+  async switchConversation(conversationId: number): Promise<StoredMessage[]> {
+    this.activeConversationId = conversationId
+    if (this.repository) {
+      const stored = await this.repository.getRecentMessages(conversationId, MAX_CONTEXT_MESSAGES)
+      this.recentMessages = stored.map((m) => ({
+        role: m.role,
+        content: m.content
+      }))
+      return await this.repository.getConversationMessages(conversationId)
+    }
+    return []
+  }
+
+  async startNewConversation(title?: string): Promise<ConversationRecord> {
+    this.recentMessages = []
+    if (this.repository) {
+      const conv = await this.repository.createConversation(title)
+      this.activeConversationId = conv.id
+      return conv
+    }
+    const dummy: ConversationRecord = {
+      id: Date.now(),
+      title: title || 'Hội thoại mới',
+      createdAt: new Date().toISOString(),
+      messageCount: 0
+    }
+    this.activeConversationId = dummy.id
+    return dummy
+  }
+
+  async deleteConversation(conversationId: number): Promise<boolean> {
+    if (this.repository) {
+      const ok = await this.repository.deleteConversation(conversationId)
+      if (this.activeConversationId === conversationId) {
+        this.activeConversationId = undefined
+        this.recentMessages = []
+        const conv = await this.repository.getOrCreateActiveConversation()
+        this.activeConversationId = conv.id
+        const stored = await this.repository.getRecentMessages(conv.id, MAX_CONTEXT_MESSAGES)
+        this.recentMessages = stored.map((m) => ({
+          role: m.role,
+          content: m.content
+        }))
+      }
+      return ok
+    }
+    this.recentMessages = []
+    return true
   }
 
   async getPersistenceEnabled(): Promise<boolean> {
