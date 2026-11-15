@@ -31,8 +31,7 @@ export default defineConfig({
       alias: {
         '@ui': resolve(__dirname, 'src/ui/src'),
         '@renderer': resolve(__dirname, 'src/ui/src'),
-        '@core': resolve(__dirname, 'src/core'),
-        '@adapters': resolve(__dirname, 'src/adapters')
+        '@core': resolve(__dirname, 'src/core')
       }
     },
     plugins: [react()]

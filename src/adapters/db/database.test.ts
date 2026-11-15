@@ -170,6 +170,24 @@ describe('SQLite Embedded Database Adapter & Migrator', () => {
     expect(() => {
       db.prepare("INSERT INTO tasks (title, status) VALUES (?, 'invalid_status')").run('Test task')
     }).toThrow()
+    expect(() => {
+      db.prepare("INSERT INTO tasks (title, status) VALUES (?, 'todo')").run('Test todo')
+    }).toThrow()
+    expect(() => {
+      db.prepare("INSERT INTO tasks (title, status) VALUES (?, 'in_progress')").run(
+        'Test in_progress'
+      )
+    }).toThrow()
+
+    // Chấp nhận đúng 'open' và 'done'
+    const insertOpen = db
+      .prepare("INSERT INTO tasks (title, status) VALUES (?, 'open')")
+      .run('Task open')
+    expect(Number(insertOpen.lastInsertRowid)).toBeGreaterThan(0)
+    const insertDone = db
+      .prepare("INSERT INTO tasks (title, status) VALUES (?, 'done')")
+      .run('Task done')
+    expect(Number(insertDone.lastInsertRowid)).toBeGreaterThan(0)
   })
 
   it('9. Kiểm thử Transaction Rollback khi xảy ra lỗi', async () => {

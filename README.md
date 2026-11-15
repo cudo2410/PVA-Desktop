@@ -43,8 +43,8 @@ Các điểm nổi bật về mặt kỹ thuật:
 
 - **Khung ứng dụng Desktop (Shell):** Quản lý vòng đời cửa sổ Electron, cấu hình sandbox an toàn, tự động nhận diện phím tắt DevTools khi phát triển.
 - **Hợp đồng miền nghiệp vụ Hexagonal:**
-  - Cổng giao tiếp `ChatModel` (`IChatModel`) định nghĩa hợp đồng kiểm tra kết nối (`health`), sinh phản hồi (`complete`) và phản hồi theo luồng (`stream`). Hoàn toàn độc lập với các thư viện bên ngoài.
-  - Các thực thể dữ liệu chuẩn hóa: `ChatMessage`, `ModelError`, `Task` và `AIIntent` (`NormalizedAIResponse`).
+  - Cổng giao tiếp `ChatModel` (`src/core/ports/ChatModel.ts`) định nghĩa hợp đồng kiểm tra kết nối (`health`), sinh phản hồi (`complete`) và phản hồi theo luồng (`stream`). Hoàn toàn độc lập với các thư viện bên ngoài.
+  - Các thực thể dữ liệu chuẩn hóa: `ChatMessage`, `ModelError`, `Task` (chuẩn hóa `TaskStatus = 'open' | 'done'` đồng bộ với SQLite constraint) và `AIIntent` (`NormalizedAIResponse`).
   - Dịch vụ miền `ChatService`: Đảm nhận xác thực tin nhắn người dùng, loại bỏ tin nhắn rỗng/khoảng trắng, điều phối lời gọi đến `ChatModel`.
 - **Adapter tích hợp mô hình AI Ollama (`OllamaChatModel`):**
   - Adapter giao tiếp HTTP qua API gốc của Ollama (`/api/version`, `/api/tags`, `/api/chat`) bằng `fetch` native của Node.js.
@@ -53,11 +53,13 @@ Các điểm nổi bật về mặt kỹ thuật:
   - Tự động tách và làm sạch thẻ suy nghĩ reasoning (`<think>...</think>`), đảm bảo câu trả lời hiển thị gọn gàng.
   - Chuẩn hóa hệ thống mã lỗi nghiêm ngặt: `MODEL_UNAVAILABLE`, `MODEL_TIMEOUT`, `MODEL_BAD_RESPONSE`.
 - **Tầng giao tiếp liên tiến trình an toàn (IPC & Preload):**
-  - Đăng ký các kênh IPC trong Main Process: `chat:send` (gửi tin nhắn) và `chat:health` (kiểm tra trạng thái Ollama).
+  - Đăng ký các kênh IPC trong Main Process: `chat:send` (gửi tin nhắn) và `chat:health` (kiểm tra trạng thái Ollama) kèm kiểm tra xác thực dữ liệu đầu vào.
   - Bắt lỗi an toàn tại IPC Adapter, không bao giờ để lộ raw error hay exception stack trace ra ngoài Renderer.
-  - Cầu nối Preload an toàn: Expose duy nhất đối tượng `window.api.chat` qua `contextBridge`, tuyệt đối không để lộ `ipcRenderer` thô.
-- **Giao diện người dùng hội thoại (Chat UI):**
-  - Xây dựng bằng React 19 với thiết kế hiện đại, bảng màu tối (dark theme) thân thiện và hiệu năng cao.
+  - Cấu hình Electron an toàn: `sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`.
+  - Cầu nối Preload an toàn: Định nghĩa Single Source of Truth tại `src/preload/types.ts`. Expose duy nhất đối tượng `window.api.chat` qua `contextBridge`, tuyệt đối không để lộ `ipcRenderer` thô.
+- **Giao diện người dùng hội thoại (Chat UI) & Apple Liquid Glass:**
+  - Xây dựng bằng React 19 với hệ thống **Design Tokens** tập trung ([`tokens.css`](src/ui/src/assets/tokens.css)) theo phong cách **Apple Liquid Glass**.
+  - Hỗ trợ đa giao diện (Dark Theme / Light Theme) với nút chuyển đổi nhanh trên Header.
   - Hiển thị danh sách bong bóng hội thoại giữa người dùng và trợ lý ảo PVA kèm mốc thời gian.
   - Trạng thái loading thời gian thực ("PVA đang suy nghĩ...") và biểu tượng xoay trực quan.
   - Thanh thông báo lỗi (Error Banner) hiển thị chi tiết mã lỗi chuẩn hóa khi mất kết nối hoặc timeout.
@@ -177,20 +179,21 @@ flowchart TD
 │   │   └── index.ts                    # Khởi tạo BrowserWindow, Database và đăng ký IPC
 │   ├── preload/                        # Script Preload kết nối an toàn
 │   │   ├── index.ts                    # Cấu hình contextBridge cho Renderer
-│   │   └── index.d.ts                  # Định nghĩa kiểu cho window.api
+│   │   ├── index.d.ts                  # Khai báo toàn cục Window.api
+│   │   └── types.ts                    # Single Source of Truth cho Preload API contracts
 │   ├── core/                           # Tầng nghiệp vụ cốt lõi (Hexagonal Core)
 │   │   ├── models/
 │   │   │   ├── AIIntent.ts             # Kiểu dữ liệu ý định & NormalizedAIResponse
 │   │   │   ├── ChatMessage.ts          # Cấu trúc tin nhắn hội thoại
 │   │   │   ├── ModelError.ts           # Định nghĩa mã lỗi chuẩn hóa
-│   │   │   └── Task.ts                 # Thực thể công việc (Task)
+│   │   │   ├── Task.ts                 # Thực thể công việc (Task, TaskStatus = 'open' | 'done')
+│   │   │   └── Task.test.ts            # Unit test cho Task & TaskStatus
 │   │   ├── ports/
-│   │   │   ├── ChatModel.ts            # Export cổng giao tiếp mô hình
-│   │   │   └── IChatModel.ts           # Interface IChatModel & ChatModelOptions
+│   │   │   └── ChatModel.ts            # Cổng giao tiếp mô hình (Port abstraction)
 │   │   └── services/                   # Dịch vụ nghiệp vụ (ChatService)
 │   ├── adapters/                       # Tầng kết nối công nghệ ngoài (Adapters)
 │   │   ├── ai/
-│   │   │   └── OllamaChatModel.ts      # Triển khai IChatModel qua API Ollama
+│   │   │   └── OllamaChatModel.ts      # Triển khai ChatModel qua API Ollama
 │   │   ├── db/
 │   │   │   ├── database.ts             # Quản lý kết nối SQLite nhúng (better-sqlite3)
 │   │   │   ├── database.test.ts        # Bộ unit test toàn diện cho SQLite và Migrator
@@ -200,7 +203,7 @@ flowchart TD
 │   └── ui/                             # Tầng giao diện người dùng (React + Vite)
 │       ├── index.html                  # File HTML chính của giao diện
 │       └── src/
-│           ├── assets/                 # Định kiểu CSS và file đồ họa SVG
+│           ├── assets/                 # Design Tokens (tokens.css), base.css, main.css
 │           ├── components/             # Các React Component tái sử dụng
 │           ├── App.tsx                 # Component gốc của ứng dụng
 │           ├── env.d.ts                # Định kiểu môi trường Vite

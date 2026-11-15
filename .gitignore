@@ -11,3 +11,6 @@ out
 data/
 *.sqlite*
 *.db*
+
+# AI Agent rules & skills (local only)
+.agents/

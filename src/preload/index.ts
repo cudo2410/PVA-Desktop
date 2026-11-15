@@ -1,28 +1,58 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { PvaApi, ChatStreamCallbacks } from './types'
 
-export interface ChatSendResponse {
-  success: boolean
-  text?: string
-  code?: string
-  error?: string
-}
-
-export interface ChatHealthResponse {
-  ok: boolean
-  reason?: string
-}
-
-export interface PvaApi {
-  chat: {
-    send(content: string): Promise<ChatSendResponse>
-    health(): Promise<ChatHealthResponse>
-  }
-}
+export type * from './types'
 
 const api: PvaApi = {
   chat: {
     send: (content: string) => ipcRenderer.invoke('chat:send', content),
-    health: () => ipcRenderer.invoke('chat:health')
+    health: () => ipcRenderer.invoke('chat:health'),
+    stream: (content: string, callbacks: ChatStreamCallbacks) => {
+      const requestId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+      const handleChunk = (_: unknown, data: { requestId: string; chunk: string }): void => {
+        if (data.requestId === requestId) {
+          callbacks.onChunk(data.chunk)
+        }
+      }
+
+      const handleEnd = (_: unknown, data: { requestId: string; fullText: string }): void => {
+        if (data.requestId === requestId) {
+          cleanup()
+          callbacks.onComplete(data.fullText)
+        }
+      }
+
+      const handleError = (
+        _: unknown,
+        data: { requestId: string; code?: string; error: string }
+      ): void => {
+        if (data.requestId === requestId) {
+          cleanup()
+          callbacks.onError({ code: data.code, message: data.error })
+        }
+      }
+
+      const cleanup = (): void => {
+        ipcRenderer.removeListener('chat:stream:chunk', handleChunk)
+        ipcRenderer.removeListener('chat:stream:end', handleEnd)
+        ipcRenderer.removeListener('chat:stream:error', handleError)
+      }
+
+      ipcRenderer.on('chat:stream:chunk', handleChunk)
+      ipcRenderer.on('chat:stream:end', handleEnd)
+      ipcRenderer.on('chat:stream:error', handleError)
+
+      ipcRenderer.send('chat:stream:start', { requestId, content })
+
+      return () => {
+        cleanup()
+        ipcRenderer.send('chat:stream:abort', { requestId })
+      }
+    }
   }
 }
 

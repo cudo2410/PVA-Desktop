@@ -1,21 +1,6 @@
-export interface ChatSendResponse {
-  success: boolean
-  text?: string
-  code?: string
-  error?: string
-}
+import type { PvaApi } from './types'
 
-export interface ChatHealthResponse {
-  ok: boolean
-  reason?: string
-}
-
-export interface PvaApi {
-  chat: {
-    send(content: string): Promise<ChatSendResponse>
-    health(): Promise<ChatHealthResponse>
-  }
-}
+export type * from './types'
 
 declare global {
   interface Window {
