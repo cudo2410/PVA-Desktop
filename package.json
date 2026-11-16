@@ -25,7 +25,9 @@
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:linux": "electron-vite build && electron-builder --linux",
-    "build:check": "npm run lint && npm run typecheck"
+    "build:check": "npm run lint && npm run typecheck",
+    "dataset:validate": "npx tsx scripts/validate_g1_dataset.ts",
+    "dataset:generate": "npx tsx scripts/generate_g1_dataset.ts"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

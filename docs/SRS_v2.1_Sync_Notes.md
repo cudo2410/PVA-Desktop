@@ -97,6 +97,23 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
 
 ---
 
+### 2.8. Bộ dữ liệu kiểm thử nhận dạng Cổng G1 (`g1-dataset/` - Nhiệm vụ 7 Tuần 2)
+
+- **Mục tiêu:** Cung cấp bộ 30 câu lệnh tiếng Việt chuẩn hóa, phục vụ Cổng G1 (Tuần 3) để đánh giá mô hình STT (Whisper.cpp và PhoWhisper-small GGML) về độ chính xác (WER) và độ trễ nhận dạng.
+- **Quy chuẩn âm thanh:**
+  - Định dạng: WAV PCM 16-bit (không nén).
+  - Tần số lấy mẫu: 16000 Hz (16 kHz).
+  - Kênh âm thanh: 1 kênh (Mono).
+- **Phân nhóm câu lệnh (30 câu):**
+  - `app_control`: 8 câu lệnh điều khiển ứng dụng & hệ thống (Chrome, Spotify, tắt máy, âm lượng, chụp màn hình,...).
+  - `task_management`: 8 câu lệnh nhắc nhở, lịch trình, danh sách việc cần làm.
+  - `information_search`: 7 câu lệnh tra cứu thời tiết, giờ, dung lượng ổ đĩa, tỷ giá,...
+  - `conversation`: 7 câu lệnh giao tiếp tự nhiên với trợ lý ảo Sinon.
+- **Tài nguyên đi kèm:**
+  - `g1-dataset/metadata.json` & `metadata.csv`: Toàn bộ metadata câu lệnh, danh mục, thời lượng, kích thước file.
+  - `g1-dataset/recorder.html`: Trang Web Audio API độc lập, hỗ trợ người dùng tự cắm micro đọc và thu âm trực tiếp thành file 16 kHz Mono chuẩn xác bất cứ lúc nào.
+  - `scripts/validate_g1_dataset.ts`: Script kiểm thử tự động đọc từng byte header RIFF/WAVE bảo đảm 100% file đạt chuẩn.
+
 ## 3. Cập nhật các bảng đối chiếu Architecture & IPC Contracts
 
 - **Bổ sung IPC Channels mới:**

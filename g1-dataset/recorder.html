@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PVA - Công cụ tự ghi âm giọng nói Cổng G1 (16 kHz Mono)</title>
+    <style>
+      :root {
+        --bg-color: #0b1120;
+        --card-bg: #1e293b;
+        --card-border: #334155;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --accent: #10b981;
+        --accent-hover: #059669;
+        --danger: #ef4444;
+        --danger-hover: #dc2626;
+        --badge-bg: #134e4a;
+        --badge-text: #5eead4;
+        --font-family:
+          'Google Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: var(--font-family);
+        line-height: 1.5;
+        padding: 24px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      header {
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--card-border);
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      p.subtitle {
+        color: var(--text-muted);
+        font-size: 14px;
+        margin-top: 6px;
+      }
+
+      .specs-box {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      .spec-item {
+        background-color: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .spec-item .label {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .spec-item .val {
+        font-size: 16px;
+        font-weight: 600;
+        color: #38bdf8;
+        margin-top: 2px;
+      }
+
+      .filter-bar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+      }
+
+      input[type='text'] {
+        flex: 1;
+        min-width: 240px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        color: var(--text-main);
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 14px;
+        outline: none;
+      }
+
+      input[type='text']:focus {
+        border-color: var(--accent);
+      }
+
+      .command-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .command-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        transition: border-color 0.2s ease;
+      }
+
+      .command-card:hover {
+        border-color: #475569;
+      }
+
+      .command-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .command-id {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        background: rgba(16, 185, 129, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+
+      .command-category {
+        font-size: 11px;
+        color: var(--badge-text);
+        background: var(--badge-bg);
+        padding: 2px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+      }
+
+      .command-text {
+        font-size: 16px;
+        font-weight: 500;
+        color: #f1f5f9;
+        background: rgba(15, 23, 42, 0.6);
+        padding: 10px 14px;
+        border-radius: 6px;
+        border-left: 3px solid var(--accent);
+      }
+
+      .command-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+      }
+
+      button.btn-record {
+        background-color: var(--danger);
+        color: white;
+      }
+
+      button.btn-record:hover {
+        background-color: var(--danger-hover);
+      }
+
+      button.btn-record.recording {
+        animation: pulse 1.2s infinite;
+        background-color: #f43f5e;
+      }
+
+      button.btn-play {
+        background-color: #0284c7;
+        color: white;
+      }
+
+      button.btn-play:hover {
+        background-color: #0369a1;
+      }
+
+      button.btn-download {
+        background-color: var(--accent);
+        color: #042f2e;
+      }
+
+      button.btn-download:hover {
+        background-color: var(--accent-hover);
+        color: white;
+      }
+
+      button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .status-text {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-left: auto;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.8;
+          transform: scale(1.03);
+        }
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🎙️ PVA - Bộ Thu Âm Cổng G1 (Whisper / PhoWhisper)</h1>
+        <p class="subtitle">
+          Tự thu âm giọng nói thật của bạn cho 30 câu lệnh kiểm thử độ chính xác (WER) và độ trễ
+          nhận dạng
+        </p>
+      </header>
+
+      <div class="specs-box">
+        <div class="spec-item">
+          <div class="label">Định dạng Audio</div>
+          <div class="val">RIFF WAVE (PCM 16-bit)</div>
+        </div>
+        <div class="spec-item">
+          <div class="label">Tần số lấy mẫu</div>
+          <div class="val">16000 Hz (16 kHz)</div>
+        </div>
+        <div class="spec-item">
+          <div class="label">Kênh âm thanh</div>
+          <div class="val">Mono (1 kênh)</div>
+        </div>
+        <div class="spec-item">
+          <div class="label">Mục tiêu</div>
+          <div class="val">PhoWhisper & Whisper.cpp</div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Tìm kiếm câu lệnh..." />
+      </div>
+
+      <div class="command-list" id="commandList">
+        <!-- Sẽ được render động từ danh sách 30 câu lệnh -->
+      </div>
+    </div>
+
+    <script>
+      const COMMANDS = [
+        { id: 'cmd_01', text: 'Mở trình duyệt Google Chrome', category: 'app_control' },
+        { id: 'cmd_02', text: 'Mở ứng dụng Spotify', category: 'app_control' },
+        { id: 'cmd_03', text: 'Tắt máy tính sau ba mươi phút', category: 'app_control' },
+        { id: 'cmd_04', text: 'Tăng âm lượng lên năm mươi phần trăm', category: 'app_control' },
+        { id: 'cmd_05', text: 'Mở trình quản lý tệp tin', category: 'app_control' },
+        { id: 'cmd_06', text: 'Chụp ảnh màn hình máy tính', category: 'app_control' },
+        { id: 'cmd_07', text: 'Bật chế độ tiết kiệm pin', category: 'app_control' },
+        { id: 'cmd_08', text: 'Khởi động lại máy tính', category: 'app_control' },
+        {
+          id: 'cmd_09',
+          text: 'Tạo nhắc nhở họp nhóm vào chín giờ sáng mai',
+          category: 'task_management'
+        },
+        {
+          id: 'cmd_10',
+          text: 'Thêm công việc hoàn thành báo cáo đồ án vào danh sách',
+          category: 'task_management'
+        },
+        { id: 'cmd_11', text: 'Hôm nay tôi có những lịch trình nào', category: 'task_management' },
+        {
+          id: 'cmd_12',
+          text: 'Đặt báo thức lúc sáu giờ ba mươi phút sáng',
+          category: 'task_management'
+        },
+        { id: 'cmd_13', text: 'Xóa nhắc nhở đi mua sách chiều nay', category: 'task_management' },
+        {
+          id: 'cmd_14',
+          text: 'Xem danh sách việc cần làm trong tuần này',
+          category: 'task_management'
+        },
+        {
+          id: 'cmd_15',
+          text: 'Đánh dấu công việc nộp bài tập đã hoàn thành',
+          category: 'task_management'
+        },
+        {
+          id: 'cmd_16',
+          text: 'Lên lịch hẹn gặp giảng viên hướng dẫn vào thứ sáu',
+          category: 'task_management'
+        },
+        {
+          id: 'cmd_17',
+          text: 'Thời tiết hôm nay ở Hà Nội như thế nào',
+          category: 'information_search'
+        },
+        { id: 'cmd_18', text: 'Bây giờ là mấy giờ', category: 'information_search' },
+        {
+          id: 'cmd_19',
+          text: 'Kiểm tra dung lượng ổ đĩa C còn trống bao nhiêu',
+          category: 'information_search'
+        },
+        { id: 'cmd_20', text: 'Giá vàng hôm nay tăng hay giảm', category: 'information_search' },
+        {
+          id: 'cmd_21',
+          text: 'Tìm kiếm tài liệu lập trình TypeScript trên mạng',
+          category: 'information_search'
+        },
+        { id: 'cmd_22', text: 'Định nghĩa trí tuệ nhân tạo là gì', category: 'information_search' },
+        { id: 'cmd_23', text: 'Ngày mai trời có mưa không', category: 'information_search' },
+        { id: 'cmd_24', text: 'Xin chào bạn tên là gì', category: 'conversation' },
+        {
+          id: 'cmd_25',
+          text: 'Kể cho tôi nghe một câu chuyện cười ngắn',
+          category: 'conversation'
+        },
+        { id: 'cmd_26', text: 'Bạn có thể giúp tôi làm những việc gì', category: 'conversation' },
+        {
+          id: 'cmd_27',
+          text: 'Hôm nay tâm trạng của tôi không được tốt lắm',
+          category: 'conversation'
+        },
+        { id: 'cmd_28', text: 'Cảm ơn bạn rất nhiều nhé', category: 'conversation' },
+        { id: 'cmd_29', text: 'Chúc bạn ngủ ngon và có giấc mơ đẹp', category: 'conversation' },
+        { id: 'cmd_30', text: 'Tạm biệt và hẹn gặp lại bạn sau', category: 'conversation' }
+      ]
+
+      let currentStream = null
+      let audioContext = null
+      let activeRecorder = null
+      let currentRecordingId = null
+      const recordedBlobs = new Map()
+
+      async function initAudio() {
+        if (!currentStream) {
+          currentStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              channelCount: 1,
+              sampleRate: 16000,
+              echoCancellation: true,
+              noiseSuppression: true
+            }
+          })
+        }
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)()
+        }
+      }
+
+      function encodeWav16kMono(audioBuffer) {
+        const targetSampleRate = 16000
+        const numChannels = 1
+        const sourceData = audioBuffer.getChannelData(0)
+
+        // Resampling linear interpolation về 16000 Hz
+        const sourceRate = audioBuffer.sampleRate
+        const targetLength = Math.round(sourceData.length * (targetSampleRate / sourceRate))
+        const samples = new Float32Array(targetLength)
+
+        for (let i = 0; i < targetLength; i++) {
+          const srcPos = i * (sourceRate / targetSampleRate)
+          const index = Math.floor(srcPos)
+          const frac = srcPos - index
+          const s0 = sourceData[index] || 0
+          const s1 = sourceData[index + 1] || s0
+          samples[i] = s0 + frac * (s1 - s0)
+        }
+
+        const byteLength = 44 + samples.length * 2
+        const buffer = new ArrayBuffer(byteLength)
+        const view = new DataView(buffer)
+
+        function writeString(offset, str) {
+          for (let i = 0; i < str.length; i++) {
+            view.setUint8(offset + i, str.charCodeAt(i))
+          }
+        }
+
+        writeString(0, 'RIFF')
+        view.setUint32(4, 36 + samples.length * 2, true)
+        writeString(8, 'WAVE')
+        writeString(12, 'fmt ')
+        view.setUint32(16, 16, true)
+        view.setUint16(20, 1, true) // PCM
+        view.setUint16(22, numChannels, true)
+        view.setUint32(24, targetSampleRate, true)
+        view.setUint32(28, targetSampleRate * numChannels * 2, true)
+        view.setUint16(32, numChannels * 2, true)
+        view.setUint16(34, 16, true) // 16-bit
+        writeString(36, 'data')
+        view.setUint32(40, samples.length * 2, true)
+
+        let offset = 44
+        for (let i = 0; i < samples.length; i++) {
+          const s = Math.max(-1, Math.min(1, samples[i]))
+          view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+          offset += 2
+        }
+
+        return new Blob([view], { type: 'audio/wav' })
+      }
+
+      async function toggleRecord(cmdId) {
+        const recBtn = document.getElementById(`rec-${cmdId}`)
+        const playBtn = document.getElementById(`play-${cmdId}`)
+        const dlBtn = document.getElementById(`dl-${cmdId}`)
+        const statusSpan = document.getElementById(`status-${cmdId}`)
+
+        if (currentRecordingId === cmdId) {
+          // Dừng thu
+          activeRecorder.stop()
+          return
+        }
+
+        if (currentRecordingId !== null) {
+          alert('Đang có một câu lệnh khác đang thu âm. Vui lòng dừng câu đó trước!')
+          return
+        }
+
+        try {
+          await initAudio()
+          const mediaRecorder = new MediaRecorder(currentStream)
+          const chunks = []
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) chunks.push(e.data)
+          }
+
+          mediaRecorder.onstop = async () => {
+            recBtn.classList.remove('recording')
+            recBtn.innerText = '🔴 Thu lại'
+            currentRecordingId = null
+            activeRecorder = null
+
+            const rawBlob = new Blob(chunks, { type: chunks[0]?.type || 'audio/webm' })
+            statusSpan.innerText = 'Đang chuẩn hóa 16 kHz Mono...'
+
+            try {
+              const arrayBuf = await rawBlob.arrayBuffer()
+              const decodedAudio = await audioContext.decodeAudioData(arrayBuf)
+              const wavBlob = encodeWav16kMono(decodedAudio)
+
+              recordedBlobs.set(cmdId, wavBlob)
+              playBtn.disabled = false
+              dlBtn.disabled = false
+              statusSpan.innerText = `Đã thu (${decodedAudio.duration.toFixed(1)}s, 16 kHz Mono)`
+              statusSpan.style.color = '#34d399'
+            } catch (err) {
+              console.error(err)
+              statusSpan.innerText = 'Lỗi xử lý âm thanh'
+              statusSpan.style.color = '#f87171'
+            }
+          }
+
+          mediaRecorder.start()
+          activeRecorder = mediaRecorder
+          currentRecordingId = cmdId
+          recBtn.classList.add('recording')
+          recBtn.innerText = '⏹ Dừng thu'
+          statusSpan.innerText = 'Đang ghi âm... Hãy đọc câu lệnh!'
+          statusSpan.style.color = '#f87171'
+        } catch (err) {
+          console.error(err)
+          alert('Không thể truy cập Microphone: ' + err.message)
+        }
+      }
+
+      function playAudio(cmdId) {
+        const blob = recordedBlobs.get(cmdId)
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const audio = new Audio(url)
+        audio.play()
+      }
+
+      function downloadWav(cmdId) {
+        const blob = recordedBlobs.get(cmdId)
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${cmdId}.wav`
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+
+      function renderCommands(filter = '') {
+        const listEl = document.getElementById('commandList')
+        listEl.innerHTML = ''
+
+        const filtered = COMMANDS.filter(
+          (c) =>
+            c.text.toLowerCase().includes(filter.toLowerCase()) ||
+            c.id.toLowerCase().includes(filter.toLowerCase())
+        )
+
+        filtered.forEach((cmd) => {
+          const card = document.createElement('div')
+          card.className = 'command-card'
+          card.id = `card-${cmd.id}`
+
+          const hasRecorded = recordedBlobs.has(cmd.id)
+
+          card.innerHTML = `
+          <div class="command-header">
+            <span class="command-id">${cmd.id.toUpperCase()}</span>
+            <span class="command-category">${cmd.category}</span>
+          </div>
+          <div class="command-text">${cmd.text}</div>
+          <div class="command-actions">
+            <button class="btn-record" id="rec-${cmd.id}" onclick="toggleRecord('${cmd.id}')">
+              🔴 Thu âm
+            </button>
+            <button class="btn-play" id="play-${cmd.id}" onclick="playAudio('${cmd.id}')" ${hasRecorded ? '' : 'disabled'}>
+              ▶️ Nghe thử
+            </button>
+            <button class="btn-download" id="dl-${cmd.id}" onclick="downloadWav('${cmd.id}')" ${hasRecorded ? '' : 'disabled'}>
+              💾 Tải WAV
+            </button>
+            <span class="status-text" id="status-${cmd.id}">
+              ${hasRecorded ? 'Đã có file ghi âm' : 'Chưa ghi âm'}
+            </span>
+          </div>
+        `
+          listEl.appendChild(card)
+        })
+      }
+
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        renderCommands(e.target.value)
+      })
+
+      renderCommands()
+    </script>
+  </body>
+</html>
