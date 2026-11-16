@@ -180,6 +180,16 @@ export class ChatService {
     }
   }
 
+  private formatConversationTitle(question: string, maxLength = 80): string {
+    const clean = (question || '')
+      .trim()
+      .replace(/\r?\n|\r/g, ' ')
+      .replace(/\s+/g, ' ')
+    if (!clean) return 'Cuộc trò chuyện mới'
+    if (clean.length <= maxLength) return clean
+    return clean.slice(0, maxLength).trim() + '...'
+  }
+
   private buildContextPayload(userMessage: Message): Message[] {
     const payload: Message[] = [
       { role: 'system', content: this.systemPrompt },
@@ -204,11 +214,23 @@ export class ChatService {
           const conv = await this.repository.getOrCreateActiveConversation()
           this.activeConversationId = conv.id
         }
+
+        // Tự động đặt tên cuộc hội thoại là câu hỏi đầu tiên của người dùng
+        const existingMessages = await this.repository.getConversationMessages(
+          this.activeConversationId
+        )
+        const isFirstTurn = existingMessages.length === 0
+
         await this.repository.saveTurnInTransaction(
           this.activeConversationId,
           { role: 'user', content: userMessage.content },
           { role: 'assistant', content: assistantMessage.content }
         )
+
+        if (isFirstTurn) {
+          const newTitle = this.formatConversationTitle(userMessage.content)
+          await this.repository.updateConversationTitle(this.activeConversationId, newTitle)
+        }
       }
     }
   }

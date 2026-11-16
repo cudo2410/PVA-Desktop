@@ -88,13 +88,39 @@ export class SqliteConversationRepository implements ConversationRepository {
                SELECT content FROM messages
                WHERE conversation_id = c.id
                ORDER BY id DESC LIMIT 1
-             ) as lastMessage
+             ) as lastMessage,
+             (
+               SELECT content FROM messages
+               WHERE conversation_id = c.id AND role = 'user'
+               ORDER BY id ASC LIMIT 1
+             ) as firstUserMessage
            FROM conversations c
            LEFT JOIN messages m ON c.id = m.conversation_id
            GROUP BY c.id
            ORDER BY c.id DESC`
         )
-        .all() as ConversationRecord[]
+        .all() as (ConversationRecord & { firstUserMessage?: string })[]
+
+      // Tự động nâng cấp tiêu đề cho các cuộc hội thoại cũ đang mang tên mặc định nếu đã có câu hỏi đầu tiên
+      for (const row of rows) {
+        if (
+          row.firstUserMessage &&
+          (row.title === 'Cuộc hội thoại chính' ||
+            row.title === 'Cuộc trò chuyện mới' ||
+            row.title === 'Hội thoại mới' ||
+            /^Hội thoại \d{2}\/\d{2}/.test(row.title))
+        ) {
+          const clean = row.firstUserMessage
+            .trim()
+            .replace(/\r?\n|\r/g, ' ')
+            .replace(/\s+/g, ' ')
+          const newTitle = clean.length > 80 ? clean.slice(0, 80).trim() + '...' : clean
+          if (newTitle) {
+            this.db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(newTitle, row.id)
+            row.title = newTitle
+          }
+        }
+      }
 
       return rows
     }, 'lấy danh sách cuộc hội thoại')

@@ -114,6 +114,33 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
   - `g1-dataset/recorder.html`: Trang Web Audio API độc lập, hỗ trợ người dùng tự cắm micro đọc và thu âm trực tiếp thành file 16 kHz Mono chuẩn xác bất cứ lúc nào.
   - `scripts/validate_g1_dataset.ts`: Script kiểm thử tự động đọc từng byte header RIFF/WAVE bảo đảm 100% file đạt chuẩn.
 
+### 2.9. Kiến trúc Giao diện Split View (Hình bên trái 3/5 & Chat bên phải Resizable)
+
+- **Mục tiêu:** Bố trí giao diện làm việc trực quan kết hợp giữa Trợ lý ảo đồng hành (Virtual Companion) và Khung hội thoại AI đầy đủ tính năng:
+  - **Sân khấu Nhân vật (Character Stage - Cột trái mặc định chiếm 3/5 ~ 60% khi mở lên):**
+    - Chiếm $60\%$ chiều ngang màn hình khi khởi động (`flex: 3`), tự động co giãn theo kích thước người dùng điều chỉnh.
+    - Không gian sạch sẽ, không che khuất nhân vật (đã loại bỏ huy hiệu HUD góc trên theo yêu cầu).
+    - Component `CharacterStage.tsx` thực thi cơ chế **Dual Video A/B CapCut Seamless Loop**: Hai thẻ `<video>` hoạt động luân phiên, kích hoạt chuyển tiếp kết hợp (Zoom nhẹ $1.025$, Gaussian Blur Dissolve $4\text{px}$, và Hologram Light Flash $0.55\text{s}$) để triệt tiêu hiện tượng bóng ma khuôn mặt và giật khung hình.
+    - Lớp mặt nạ `stage-vignette` hòa trộn studio mượt mà sang viền cột chat bên phải.
+    - Quầng sáng Hologram Emerald phản ứng theo nhịp đập khi trạng thái là `Listening` hoặc `Speaking`.
+  - **Ranh giới điều chỉnh kích thước (Split Resizer Divider):**
+    - Đặt giữa cột video và cột chat, con trỏ chuột tự động biến thành `col-resize` khi rê vào ranh giới.
+    - Kéo sang trái/phải để thu phóng chiều rộng khung chat (giới hạn an toàn từ $280\text{px}$ đến $70\text{vw}$).
+    - Đường chỉ Hologram Emerald phát sáng khi rê chuột hoặc kéo; tự động lưu kích thước tùy chỉnh vào `localStorage` (`pva_chat_panel_width_custom`).
+  - **Khung Chat Đầy Đủ (Chat Panel - Cột phải mặc định 2/5 ~ 40% & Toolbar đồng bộ chiều cao):**
+    - Chất liệu Apple Liquid Glass Dark (`background: rgba(11, 17, 32, 0.92)`, `backdrop-filter: blur(28px) saturate(180%)`).
+    - **Header**: Tinh giản tối đa: chỉ giữ Avatar Asada Sinon, dòng trạng thái thời gian thực bên dưới tên (nhấp để kết nối lại nếu có lỗi), và nút Drawer Lịch sử `<|` (đã bỏ ô trạng thái thừa).
+    - **Body**: Toàn bộ lịch sử tin nhắn cuộn mượt mà, phân cách ngày chuẩn Figma (`formatFigmaTimestamp`), bong bóng tin nhắn User/Assistant với trạng thái "Đã gửi" / "Đã đọc", nút sao chép và chỉ báo đang gõ.
+    - **Composer 2 hàng với Toolbar đồng bộ chuẩn thiết kế**:
+      - Hàng 1: Textarea nhập tin nhắn tự do, mở rộng toàn bộ bề ngang.
+      - Hàng 2: Toolbar tác vụ căn 2 đầu rõ ràng:
+        - Căn trái: Nút `＋` và Nút Drop-up chọn chế độ lưu trữ.
+        - Căn phải: Nút micro `🎙️` và Nút gửi `➔`.
+        - **Đồng bộ chiều cao tuyệt đối**: Tất cả nút trong toolbar đều có chiều cao bằng nhau ($32\text{px}$), thẳng hàng cơ sở.
+        - **Chuẩn Icon Vector 2D Monochrome**: Không sử dụng emoji hay icon 3D có sẵn, loại bỏ hoàn toàn viền/chữ màu vàng ở nút dropup, giữ vẻ tối giản kính mờ sang trọng.
+      - **Thẻ Drop-up Menu tối giản**: Mở ngược lên trên với kích thước nhỏ gọn $155\text{px}$, chỉ gồm 2 tùy chọn trực diện (_"Lưu lịch sử"_ và _"Chat tạm thời"_) kèm dấu tick xanh ngọc bích `✓`.
+  - **Khả năng đáp ứng (Responsive):** Tự động chuyển thành bố cục dọc (Column) trên màn hình hẹp ($\le 860\text{px}$) với 45% chiều cao cho nhân vật và 55% cho khung trò chuyện.
+
 ## 3. Cập nhật các bảng đối chiếu Architecture & IPC Contracts
 
 - **Bổ sung IPC Channels mới:**
@@ -136,3 +163,13 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
   - `window.api.chat.switchConversation(id: number)`
   - `window.api.chat.createConversation(title?: string)`
   - `window.api.chat.deleteConversation(id: number)`
+
+### 2.10. Tự động đặt tên cuộc hội thoại theo câu hỏi đầu tiên của người dùng (UC-06)
+
+- **Cơ chế hoạt động:**
+  - Khi người dùng gửi câu hỏi đầu tiên trong một cuộc hội thoại (cuộc hội thoại mới hoặc chưa có tin nhắn nào), hệ thống `ChatService` tự động trích xuất nội dung câu hỏi đầu tiên, làm sạch khoảng trắng thừa và cắt gọn tối đa 80 ký tự (kèm dấu `...` nếu câu hỏi dài) để làm tiêu đề chính thức cho cuộc hội thoại.
+  - Cập nhật tiêu đề trực tiếp vào CSDL SQLite (`conversations.title`) thông qua `repository.updateConversationTitle()`.
+  - Tự động nâng cấp tiêu đề cho các cuộc hội thoại cũ đang mang tên mặc định (`Cuộc hội thoại chính`, `Cuộc trò chuyện mới`, `Hội thoại DD/MM HH:mm`) khi hiển thị danh sách hội thoại nếu đã có câu hỏi từ người dùng.
+- **Trải nghiệm người dùng:**
+  - Danh sách cuộc hội thoại trong **History Drawer** hiển thị rõ ràng chủ đề theo câu hỏi đầu tiên thay vì các nhãn ngày giờ chung chung.
+  - Người dùng có thể tìm kiếm nhanh cuộc hội thoại trong thanh tìm kiếm bằng các từ khóa xuất hiện trong câu hỏi đầu tiên của họ.

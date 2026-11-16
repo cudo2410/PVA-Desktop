@@ -297,4 +297,20 @@ describe('ChatService Domain Service', () => {
     const health = await service.checkHealth()
     expect(health.ok).toBe(true)
   })
+
+  it('Tự động đặt tên cuộc hội thoại là câu hỏi đầu tiên của người dùng', async () => {
+    const model = new MockChatModel()
+    const repo = new MockConversationRepository()
+    const service = new ChatService(model, { repository: repo })
+    await service.init()
+
+    const conv = await service.startNewConversation()
+    expect(conv.id).toBe(2)
+
+    await service.send('Lập kế hoạch tuần này giúp tôi nhé')
+
+    const list = await service.listConversations()
+    const target = list.find((c) => c.id === conv.id)
+    expect(target?.title).toBe('Lập kế hoạch tuần này giúp tôi nhé')
+  })
 })
