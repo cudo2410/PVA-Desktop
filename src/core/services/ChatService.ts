@@ -273,4 +273,17 @@ export class ChatService {
   async checkHealth(): Promise<ChatModelHealth> {
     return await this.chatModel.health()
   }
+
+  async restartModelServer(): Promise<boolean> {
+    if (
+      'startServer' in this.chatModel &&
+      typeof (this.chatModel as unknown as { startServer: () => Promise<boolean> }).startServer ===
+        'function'
+    ) {
+      return await (
+        this.chatModel as unknown as { startServer: () => Promise<boolean> }
+      ).startServer()
+    }
+    return false
+  }
 }

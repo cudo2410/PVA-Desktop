@@ -141,6 +141,47 @@ body {
   background: #10b981;
   border: 2px solid #080c14;
   box-shadow: 0 0 8px #10b981;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.brand-avatar-status-dot.status-online {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.brand-avatar-status-dot.status-idle {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.brand-avatar-status-dot.status-listening {
+  background: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8;
+  animation: pulseDot 0.8s infinite alternate;
+}
+
+.brand-avatar-status-dot.status-processing {
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b;
+  animation: pulseDot 1s infinite alternate;
+}
+
+.brand-avatar-status-dot.status-speaking {
+  background: #10b981;
+  box-shadow: 0 0 12px #10b981;
+  animation: pulseDot 0.6s infinite alternate;
+}
+
+.brand-avatar-status-dot.status-starting {
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+}
+
+.brand-avatar-status-dot.status-offline {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
 }
 
 .brand-title {
@@ -184,7 +225,9 @@ body {
   border: 1.2px solid rgba(255, 255, 255, 0.16);
   color: #8e8e93;
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
   user-select: none;
   padding: 0;
   box-sizing: border-box;
@@ -207,7 +250,10 @@ body {
 }
 
 .drawer-icon-symbol {
-  font-family: monospace, -apple-system, sans-serif;
+  font-family:
+    monospace,
+    -apple-system,
+    sans-serif;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
@@ -226,7 +272,9 @@ body {
   border: 1px solid var(--liquid-glass-border);
   color: var(--liquid-text-secondary);
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
   user-select: none;
 }
 
@@ -252,7 +300,9 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #94a3b8;
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
   user-select: none;
 }
 
@@ -294,6 +344,200 @@ body {
 
 .status-pill:hover {
   border-color: #10b981;
+}
+
+/* App Status Bar (Nhiệm vụ 6: Idle / Listening / Processing / Speaking / Error) */
+.app-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: var(--liquid-radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  backdrop-filter: var(--liquid-glass-blur-sm);
+  -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  transition: all 0.22s ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.app-status-bar.is-clickable {
+  cursor: pointer;
+}
+
+.app-status-bar.is-clickable:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* State: Idle */
+.app-status-bar.state-idle {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.06);
+  color: #a7f3d0;
+}
+
+.status-indicator-dot.idle-dot {
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+  display: inline-block;
+}
+
+/* State: Listening */
+.app-status-bar.state-listening {
+  border-color: rgba(56, 189, 248, 0.55);
+  background: rgba(56, 189, 248, 0.12);
+  color: #bae6fd;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+}
+
+.status-indicator-icon.listening-wave,
+.status-indicator-icon.speaking-pulse {
+  display: flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 12px;
+}
+
+.sound-wave-bar {
+  width: 2.5px;
+  height: 9px;
+  border-radius: 2px;
+  background-color: #38bdf8;
+  animation: soundWave 0.8s ease-in-out infinite alternate;
+}
+
+.sound-wave-bar.bar-1 {
+  animation-delay: 0s;
+}
+
+.sound-wave-bar.bar-2 {
+  animation-delay: 0.25s;
+}
+
+.sound-wave-bar.bar-3 {
+  animation-delay: 0.5s;
+}
+
+@keyframes soundWave {
+  0% {
+    height: 4px;
+    opacity: 0.4;
+  }
+  100% {
+    height: 12px;
+    opacity: 1;
+  }
+}
+
+/* State: Processing */
+.app-status-bar.state-processing {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
+}
+
+.status-indicator-spinner {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.processing-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #f59e0b;
+  animation: processingDot 1.2s infinite ease-in-out;
+}
+
+.processing-dot.dot-1 {
+  animation-delay: 0s;
+}
+
+.processing-dot.dot-2 {
+  animation-delay: 0.2s;
+}
+
+.processing-dot.dot-3 {
+  animation-delay: 0.4s;
+}
+
+@keyframes processingDot {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* State: Speaking */
+.app-status-bar.state-speaking {
+  border-color: rgba(16, 185, 129, 0.55);
+  background: rgba(16, 185, 129, 0.14);
+  color: #6ee7b7;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+}
+
+.sound-wave-bar.active {
+  background-color: #10b981;
+  animation: soundWave 0.6s ease-in-out infinite alternate;
+}
+
+/* State: Error */
+.app-status-bar.state-error {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
+}
+
+.status-bar-code {
+  font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.status-bar-action-hint {
+  font-size: 11px;
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+/* Composer Mic Button Active (Listening State) */
+.composer-action-btn.mic-btn.is-listening {
+  color: #38bdf8 !important;
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  background: rgba(56, 189, 248, 0.2) !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5) !important;
+  animation: micPulse 1s infinite alternate !important;
+}
+
+@keyframes micPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
+  }
+  100% {
+    transform: scale(1.08);
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.65);
+  }
 }
 
 .status-dot {
@@ -432,7 +676,9 @@ body {
   border-radius: var(--liquid-radius-md);
   font-size: 13.5px;
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
   text-align: left;
 }
 
@@ -676,25 +922,77 @@ body {
 /* Bubble Error State */
 .bubble-error-content {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 8px;
   color: #fca5a5;
   font-size: 13.5px;
+}
+
+.bubble-error-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
 }
 
 .bubble-error-icon {
   font-size: 15px;
 }
 
+.bubble-error-code {
+  font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace;
+  font-size: 11.5px;
+  padding: 1px 6px;
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 4px;
+  color: #fecaca;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.bubble-error-message {
+  line-height: 1.45;
+  color: #fecaca;
+}
+
+.bubble-error-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.bubble-retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.bubble-retry-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: #10b981;
+  color: #34d399;
+}
+
 /* Error Banner */
 .error-banner {
-  margin: 0 24px 14px;
-  padding: 12px 18px;
-  background: rgba(239, 68, 68, 0.15);
+  margin: 0 20px 14px;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.18);
   backdrop-filter: var(--liquid-glass-blur-sm);
   -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: var(--liquid-radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 10px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -705,33 +1003,67 @@ body {
 }
 
 .error-banner-icon {
-  font-size: 17px;
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .error-banner-body {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .error-banner-code {
   display: inline-block;
-  margin-left: 8px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  font-family: monospace;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace;
   font-size: 11px;
+  font-weight: 600;
   color: #fca5a5;
+}
+
+.error-banner-text {
+  line-height: 1.4;
+}
+
+.error-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.error-banner-retry {
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  color: #ffffff;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.error-banner-retry:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #34d399;
+  color: #34d399;
 }
 
 .error-banner-close {
   background: transparent;
   border: none;
   color: #fca5a5;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
-  padding: 4px;
+  padding: 3px 6px;
   border-radius: 4px;
-  transition: all 0.2s ease;
+  transition: all 0.18s ease;
 }
 
 .error-banner-close:hover {
@@ -765,7 +1097,9 @@ body {
   border: 1px solid var(--liquid-glass-border);
   border-radius: 28px;
   box-shadow: var(--liquid-shadow-elevated), var(--liquid-glass-highlight);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 /* Chỉ highlight khung chat khi ô nhập liệu (chat-input) được focus, bấm + hoặc micro không làm highlight khung chat */
@@ -787,7 +1121,9 @@ body {
   justify-content: center;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
   flex-shrink: 0;
   user-select: none;
   outline: none;

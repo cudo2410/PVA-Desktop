@@ -96,7 +96,6 @@ export class OllamaChatModel implements ChatModel {
   private readonly model: string
   private readonly timeoutMs: number
   private readonly defaultTemperature: number
-  private readonly autoStart: boolean
   private readonly numGpu: number
   private readonly processManager: OllamaProcessManager
 
@@ -105,7 +104,6 @@ export class OllamaChatModel implements ChatModel {
     this.model = config?.model || 'qwen3:1.7b'
     this.timeoutMs = config?.timeoutMs ?? 60000
     this.defaultTemperature = config?.defaultTemperature ?? 0.3
-    this.autoStart = config?.autoStart ?? true
     this.numGpu =
       config?.numGpu ?? (process.env.OLLAMA_NUM_GPU ? parseInt(process.env.OLLAMA_NUM_GPU, 10) : 0)
     this.processManager = config?.processManager ?? new OllamaProcessManager(this.baseUrl)
@@ -119,36 +117,30 @@ export class OllamaChatModel implements ChatModel {
     return res.success
   }
 
+  /**
+   * Chủ động kích hoạt tiến trình Ollama khi người dùng bấm thử lại trên UI
+   */
+  async startServer(): Promise<boolean> {
+    const res = await this.processManager.startServer()
+    return res.success
+  }
+
   async health(): Promise<ChatModelHealth> {
     try {
       // 1. Kiểm tra nhanh xem server có đang phản hồi không
-      let isRunning = await this.processManager.isServerRunning(1500)
-
-      // 2. Nếu server chưa chạy và autoStart bật, tự động kích hoạt ollama serve ngầm
-      if (!isRunning && this.autoStart) {
-        const startResult = await this.processManager.startServer()
-        if (!startResult.success) {
-          const isStarting =
-            startResult.reason?.includes('OLLAMA_START') &&
-            !startResult.reason?.includes('OLLAMA_START_TIMEOUT')
-          return {
-            ok: false,
-            status: isStarting ? 'starting' : 'unhealthy',
-            reason: startResult.reason
-          }
-        }
-        isRunning = true
-      }
+      const isRunning = await this.processManager.isServerRunning(1500)
 
       if (!isRunning) {
         return {
           ok: false,
           status: 'unhealthy',
-          reason: `MODEL_UNAVAILABLE: Không thể kết nối tới Ollama tại ${this.baseUrl}`
+          code: 'MODEL_UNAVAILABLE',
+          reason:
+            'MODEL_UNAVAILABLE: Không thể kết nối tới Ollama. Vui lòng bật Ollama trên máy tính của bạn.'
         }
       }
 
-      // 3. Kiểm tra danh sách mô hình từ Ollama (/api/tags)
+      // 2. Kiểm tra danh sách mô hình từ Ollama (/api/tags)
       const tagsRes = await fetch(`${this.baseUrl}/api/tags`, {
         method: 'GET',
         signal: AbortSignal.timeout(4000)
@@ -158,6 +150,7 @@ export class OllamaChatModel implements ChatModel {
         return {
           ok: false,
           status: 'unhealthy',
+          code: 'MODEL_UNAVAILABLE',
           reason: `MODEL_UNAVAILABLE: Máy chủ Ollama trả về mã trạng thái HTTP ${tagsRes.status} khi lấy danh sách mô hình.`
         }
       }
@@ -177,6 +170,7 @@ export class OllamaChatModel implements ChatModel {
         return {
           ok: false,
           status: 'model_missing',
+          code: 'MODEL_UNAVAILABLE',
           reason: `MODEL_UNAVAILABLE: Mô hình "${this.model}" chưa được tải về máy. Hãy chạy lệnh: ollama pull ${this.model}`
         }
       }
@@ -187,6 +181,7 @@ export class OllamaChatModel implements ChatModel {
       return {
         ok: false,
         status: 'unhealthy',
+        code: 'MODEL_UNAVAILABLE',
         reason: `MODEL_UNAVAILABLE: Không thể kết nối tới Ollama tại ${this.baseUrl} (${errorMsg})`
       }
     }

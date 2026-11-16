@@ -160,4 +160,17 @@ describe('SqliteConversationRepository', () => {
     const msgs = await repo.getConversationMessages(conv.id)
     expect(msgs).toHaveLength(0)
   })
+
+  it('9. ném DatabaseError với mã DB_UNAVAILABLE khi kết nối CSDL bị đóng hoặc lỗi', async () => {
+    // Đóng database để mô phỏng sự cố CSDL không khả dụng
+    db.close()
+
+    await expect(repo.listConversations()).rejects.toMatchObject({
+      code: 'DB_UNAVAILABLE'
+    })
+
+    await expect(repo.createConversation('Hội thoại lỗi')).rejects.toMatchObject({
+      code: 'DB_UNAVAILABLE'
+    })
+  })
 })

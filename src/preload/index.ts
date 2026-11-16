@@ -7,6 +7,7 @@ const api: PvaApi = {
   chat: {
     send: (content: string) => ipcRenderer.invoke('chat:send', content),
     health: () => ipcRenderer.invoke('chat:health'),
+    startModel: () => ipcRenderer.invoke('chat:model:start'),
     loadHistory: () => ipcRenderer.invoke('chat:history:load'),
     getPersistence: () => ipcRenderer.invoke('chat:history:get-persistence'),
     setPersistence: (enabled: boolean) =>

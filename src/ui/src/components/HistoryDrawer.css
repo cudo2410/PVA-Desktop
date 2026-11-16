@@ -114,7 +114,9 @@
   border: 1.2px solid rgba(255, 255, 255, 0.16);
   color: #8e8e93;
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
   user-select: none;
   padding: 0;
   box-sizing: border-box;
@@ -186,7 +188,9 @@
   justify-content: center;
   gap: 6px;
   cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
   box-shadow: none;
 }
 
@@ -263,7 +267,9 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   cursor: pointer;
-  transition: border-color 0.18s ease, background-color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
   position: relative;
 }
 
@@ -349,7 +355,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
   box-sizing: border-box;
 }
 
@@ -392,7 +401,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .card-option-item.danger {

@@ -1,12 +1,78 @@
 import { ipcMain } from 'electron'
 import { ChatService } from '../../core/services/ChatService'
-import { ModelError, ModelErrorCode } from '../../core/models/ModelError'
+import {
+  AppError,
+  DatabaseError,
+  ModelError,
+  StandardErrorCode
+} from '../../core/models/ModelError'
 
 export interface ChatIpcResponse {
   success: boolean
   text?: string
-  code?: ModelErrorCode | 'INVALID_INPUT' | 'UNKNOWN_ERROR'
+  code?: StandardErrorCode | 'INVALID_INPUT' | 'UNKNOWN_ERROR'
   error?: string
+}
+
+function resolveStandardErrorCode(err: unknown): { code: StandardErrorCode; message: string } {
+  if (err instanceof AppError || err instanceof ModelError || err instanceof DatabaseError) {
+    return {
+      code: err.code,
+      message: err.message
+    }
+  }
+
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase()
+    if (msg.includes('sqlite') || msg.includes('database') || msg.includes('cơ sở dữ liệu')) {
+      return {
+        code: 'DB_UNAVAILABLE',
+        message: err.message
+      }
+    }
+    if (
+      msg.includes('timeout') ||
+      msg.includes('aborterror') ||
+      msg.includes('quá thời gian chờ')
+    ) {
+      return {
+        code: 'MODEL_TIMEOUT',
+        message: err.message
+      }
+    }
+    if (
+      msg.includes('json') ||
+      msg.includes('cấu trúc') ||
+      msg.includes('bad response') ||
+      msg.includes('500')
+    ) {
+      return {
+        code: 'MODEL_BAD_RESPONSE',
+        message: err.message
+      }
+    }
+    if (
+      msg.includes('fetch') ||
+      msg.includes('econnrefused') ||
+      msg.includes('ollama') ||
+      msg.includes('kết nối')
+    ) {
+      return {
+        code: 'MODEL_UNAVAILABLE',
+        message: err.message
+      }
+    }
+
+    return {
+      code: 'MODEL_UNAVAILABLE',
+      message: err.message
+    }
+  }
+
+  return {
+    code: 'MODEL_UNAVAILABLE',
+    message: String(err)
+  }
 }
 
 export function registerChatIpc(chatService: ChatService): void {
@@ -58,22 +124,13 @@ export function registerChatIpc(chatService: ChatService): void {
           return
         }
 
-        let code = 'UNKNOWN_ERROR'
-        let error = 'Đã xảy ra lỗi không xác định khi stream tin nhắn.'
-
-        if (err instanceof ModelError) {
-          code = err.code
-          error = err.message
-        } else if (err instanceof Error) {
-          code = 'CHAT_STREAM_ERROR'
-          error = err.message
-        }
+        const { code, message } = resolveStandardErrorCode(err)
 
         if (!event.sender.isDestroyed()) {
           event.sender.send('chat:stream:error', {
             requestId,
             code,
-            error
+            error: message
           })
         }
       } finally {
@@ -106,37 +163,40 @@ export function registerChatIpc(chatService: ChatService): void {
         text: result.text
       }
     } catch (err: unknown) {
-      if (err instanceof ModelError) {
-        return {
-          success: false,
-          code: err.code,
-          error: err.message
-        }
-      }
-
-      if (err instanceof Error) {
-        return {
-          success: false,
-          code: 'INVALID_INPUT',
-          error: err.message
-        }
-      }
-
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        code: 'UNKNOWN_ERROR',
-        error: 'Đã xảy ra lỗi không xác định khi xử lý tin nhắn.'
+        code,
+        error: message
       }
     }
   })
 
   ipcMain.handle('chat:health', async () => {
     try {
-      return await chatService.checkHealth()
+      const health = await chatService.checkHealth()
+      if (!health.ok && !health.code) {
+        health.code = 'MODEL_UNAVAILABLE'
+      }
+      return health
     } catch {
       return {
         ok: false,
+        status: 'unhealthy',
+        code: 'MODEL_UNAVAILABLE',
         reason: 'MODEL_UNAVAILABLE: Không thể thực hiện kiểm tra trạng thái Ollama.'
+      }
+    }
+  })
+
+  ipcMain.handle('chat:model:start', async () => {
+    try {
+      const started = await chatService.restartModelServer()
+      return { success: started }
+    } catch (err: unknown) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Không thể khởi động Ollama'
       }
     }
   })
@@ -146,9 +206,11 @@ export function registerChatIpc(chatService: ChatService): void {
       const messages = await chatService.loadHistory()
       return { success: true, messages }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể tải lịch sử trò chuyện.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể tải lịch sử trò chuyện.'
       }
     }
   })
@@ -167,9 +229,11 @@ export function registerChatIpc(chatService: ChatService): void {
       await chatService.setPersistenceEnabled(Boolean(enabled))
       return { success: true }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể cập nhật cấu hình lưu trữ.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể cập nhật cấu hình lưu trữ.'
       }
     }
   })
@@ -179,9 +243,11 @@ export function registerChatIpc(chatService: ChatService): void {
       await chatService.clearHistory()
       return { success: true }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể xóa lịch sử trò chuyện.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể xóa lịch sử trò chuyện.'
       }
     }
   })
@@ -191,9 +257,11 @@ export function registerChatIpc(chatService: ChatService): void {
       const conversations = await chatService.listConversations()
       return { success: true, conversations }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể lấy danh sách cuộc hội thoại.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể lấy danh sách cuộc hội thoại.'
       }
     }
   })
@@ -207,9 +275,11 @@ export function registerChatIpc(chatService: ChatService): void {
       const messages = await chatService.getConversationMessages(id)
       return { success: true, messages }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể lấy chi tiết cuộc hội thoại.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể lấy chi tiết cuộc hội thoại.'
       }
     }
   })
@@ -223,9 +293,11 @@ export function registerChatIpc(chatService: ChatService): void {
       const messages = await chatService.switchConversation(id)
       return { success: true, messages }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể chuyển đổi cuộc hội thoại.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể chuyển đổi cuộc hội thoại.'
       }
     }
   })
@@ -237,9 +309,11 @@ export function registerChatIpc(chatService: ChatService): void {
       )
       return { success: true, conversation }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể tạo cuộc hội thoại mới.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể tạo cuộc hội thoại mới.'
       }
     }
   })
@@ -253,9 +327,11 @@ export function registerChatIpc(chatService: ChatService): void {
       const deleted = await chatService.deleteConversation(id)
       return { success: deleted }
     } catch (err: unknown) {
+      const { code, message } = resolveStandardErrorCode(err)
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'Không thể xóa cuộc hội thoại.'
+        code: code === 'DB_UNAVAILABLE' ? 'DB_UNAVAILABLE' : undefined,
+        error: message || 'Không thể xóa cuộc hội thoại.'
       }
     }
   })

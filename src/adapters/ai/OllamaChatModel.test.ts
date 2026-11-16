@@ -207,7 +207,53 @@ describe('OllamaChatModel Adapter', () => {
     const health = await model.health()
     expect(health.ok).toBe(false)
     expect(health.status).toBe('model_missing')
+    expect(health.code).toBe('MODEL_UNAVAILABLE')
     expect(health.reason).toContain('chưa được tải về máy')
+  })
+
+  it('health() trả về MODEL_UNAVAILABLE khi Ollama không chạy (tắt kết nối)', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('fetch failed (ECONNREFUSED)'))
+
+    const model = new OllamaChatModel({ model: 'qwen3:1.7b' })
+    const health = await model.health()
+    expect(health.ok).toBe(false)
+    expect(health.status).toBe('unhealthy')
+    expect(health.code).toBe('MODEL_UNAVAILABLE')
+    expect(health.reason).toContain('MODEL_UNAVAILABLE')
+  })
+
+  it('complete() ném MODEL_UNAVAILABLE khi không thể kết nối tới Ollama', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Failed to fetch'))
+
+    const model = new OllamaChatModel()
+    await expect(model.complete([{ role: 'user', content: 'Alo' }])).rejects.toMatchObject({
+      code: 'MODEL_UNAVAILABLE'
+    })
+  })
+
+  it('complete() ném MODEL_TIMEOUT khi quá thời gian chờ', async () => {
+    const timeoutErr = new Error('The operation was aborted due to timeout')
+    timeoutErr.name = 'TimeoutError'
+    global.fetch = vi.fn().mockRejectedValue(timeoutErr)
+
+    const model = new OllamaChatModel()
+    await expect(model.complete([{ role: 'user', content: 'Alo' }])).rejects.toMatchObject({
+      code: 'MODEL_TIMEOUT'
+    })
+  })
+
+  it('complete() ném MODEL_BAD_RESPONSE khi Ollama trả về HTTP 500 hoặc format sai', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({ error: 'Ollama internal crash' })
+    } as unknown as Response)
+
+    const model = new OllamaChatModel()
+    await expect(model.complete([{ role: 'user', content: 'Alo' }])).rejects.toMatchObject({
+      code: 'MODEL_BAD_RESPONSE'
+    })
   })
 
   it('gửi think: false trong payload tới Ollama /api/chat', async () => {

@@ -4,6 +4,7 @@ import {
   ConversationRepository,
   StoredMessage
 } from '../../core/ports/ConversationRepository'
+import { DatabaseError } from '../../core/models/ModelError'
 import { getDatabase } from './database'
 
 export class SqliteConversationRepository implements ConversationRepository {
@@ -13,33 +14,37 @@ export class SqliteConversationRepository implements ConversationRepository {
     this.db = db || getDatabase()
   }
 
+  private safeExecute<T>(fn: () => T, actionDesc: string): T {
+    try {
+      return fn()
+    } catch (err: unknown) {
+      if (err instanceof DatabaseError) {
+        throw err
+      }
+      const detail = err instanceof Error ? err.message : String(err)
+      throw new DatabaseError(`Không thể ${actionDesc} do cơ sở dữ liệu không khả dụng: ${detail}`)
+    }
+  }
+
   async getOrCreateActiveConversation(
     defaultTitle = 'Cuộc hội thoại chính'
   ): Promise<ConversationRecord> {
-    const row = this.db
-      .prepare(
-        'SELECT id, title, created_at as createdAt FROM conversations ORDER BY id DESC LIMIT 1'
-      )
-      .get() as { id: number; title: string; createdAt: string } | undefined
+    return this.safeExecute(() => {
+      const row = this.db
+        .prepare(
+          'SELECT id, title, created_at as createdAt FROM conversations ORDER BY id DESC LIMIT 1'
+        )
+        .get() as { id: number; title: string; createdAt: string } | undefined
 
-    if (row) {
-      return row
-    }
+      if (row) {
+        return row
+      }
 
-    return await this.createConversation(defaultTitle)
+      return this.createConversationSync(defaultTitle)
+    }, 'lấy hoặc tạo cuộc hội thoại hoạt động')
   }
 
-  async createConversation(title?: string): Promise<ConversationRecord> {
-    const defaultTitle =
-      title ||
-      `Hội thoại ${new Date().toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit'
-      })} ${new Date().toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })}`
-
+  private createConversationSync(defaultTitle: string): ConversationRecord {
     const insertStmt = this.db.prepare('INSERT INTO conversations (title) VALUES (?)')
     const result = insertStmt.run(defaultTitle)
     const newId = Number(result.lastInsertRowid)
@@ -54,54 +59,76 @@ export class SqliteConversationRepository implements ConversationRepository {
     }
   }
 
-  async listConversations(): Promise<ConversationRecord[]> {
-    const rows = this.db
-      .prepare(
-        `SELECT
-           c.id,
-           c.title,
-           c.created_at as createdAt,
-           COUNT(m.id) as messageCount,
-           (
-             SELECT content FROM messages
-             WHERE conversation_id = c.id
-             ORDER BY id DESC LIMIT 1
-           ) as lastMessage
-         FROM conversations c
-         LEFT JOIN messages m ON c.id = m.conversation_id
-         GROUP BY c.id
-         ORDER BY c.id DESC`
-      )
-      .all() as ConversationRecord[]
+  async createConversation(title?: string): Promise<ConversationRecord> {
+    return this.safeExecute(() => {
+      const defaultTitle =
+        title ||
+        `Hội thoại ${new Date().toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit'
+        })} ${new Date().toLocaleTimeString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`
 
-    return rows
+      return this.createConversationSync(defaultTitle)
+    }, 'tạo cuộc hội thoại mới')
+  }
+
+  async listConversations(): Promise<ConversationRecord[]> {
+    return this.safeExecute(() => {
+      const rows = this.db
+        .prepare(
+          `SELECT
+             c.id,
+             c.title,
+             c.created_at as createdAt,
+             COUNT(m.id) as messageCount,
+             (
+               SELECT content FROM messages
+               WHERE conversation_id = c.id
+               ORDER BY id DESC LIMIT 1
+             ) as lastMessage
+           FROM conversations c
+           LEFT JOIN messages m ON c.id = m.conversation_id
+           GROUP BY c.id
+           ORDER BY c.id DESC`
+        )
+        .all() as ConversationRecord[]
+
+      return rows
+    }, 'lấy danh sách cuộc hội thoại')
   }
 
   async getConversationMessages(conversationId: number): Promise<StoredMessage[]> {
-    const rows = this.db
-      .prepare(
-        `SELECT id, conversation_id as conversationId, role, content, created_at as createdAt
-         FROM messages
-         WHERE conversation_id = ?
-         ORDER BY id ASC`
-      )
-      .all(conversationId) as StoredMessage[]
+    return this.safeExecute(() => {
+      const rows = this.db
+        .prepare(
+          `SELECT id, conversation_id as conversationId, role, content, created_at as createdAt
+           FROM messages
+           WHERE conversation_id = ?
+           ORDER BY id ASC`
+        )
+        .all(conversationId) as StoredMessage[]
 
-    return rows
+      return rows
+    }, 'lấy tin nhắn cuộc hội thoại')
   }
 
   async getRecentMessages(conversationId: number, limit = 20): Promise<StoredMessage[]> {
-    const rows = this.db
-      .prepare(
-        `SELECT id, conversation_id as conversationId, role, content, created_at as createdAt
-         FROM messages
-         WHERE conversation_id = ?
-         ORDER BY id DESC
-         LIMIT ?`
-      )
-      .all(conversationId, limit) as StoredMessage[]
+    return this.safeExecute(() => {
+      const rows = this.db
+        .prepare(
+          `SELECT id, conversation_id as conversationId, role, content, created_at as createdAt
+           FROM messages
+           WHERE conversation_id = ?
+           ORDER BY id DESC
+           LIMIT ?`
+        )
+        .all(conversationId, limit) as StoredMessage[]
 
-    return rows.reverse()
+      return rows.reverse()
+    }, 'lấy tin nhắn gần đây')
   }
 
   async saveTurnInTransaction(
@@ -109,64 +136,74 @@ export class SqliteConversationRepository implements ConversationRepository {
     userMessage: { role: 'user'; content: string },
     assistantMessage: { role: 'assistant'; content: string }
   ): Promise<{ userMessageId: number; assistantMessageId: number }> {
-    const runTx = this.db.transaction(() => {
-      const stmt = this.db.prepare(
-        'INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)'
-      )
+    return this.safeExecute(() => {
+      const runTx = this.db.transaction(() => {
+        const stmt = this.db.prepare(
+          'INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)'
+        )
 
-      const userResult = stmt.run(conversationId, userMessage.role, userMessage.content)
-      const assistantResult = stmt.run(
-        conversationId,
-        assistantMessage.role,
-        assistantMessage.content
-      )
+        const userResult = stmt.run(conversationId, userMessage.role, userMessage.content)
+        const assistantResult = stmt.run(
+          conversationId,
+          assistantMessage.role,
+          assistantMessage.content
+        )
 
-      return {
-        userMessageId: Number(userResult.lastInsertRowid),
-        assistantMessageId: Number(assistantResult.lastInsertRowid)
-      }
-    })
+        return {
+          userMessageId: Number(userResult.lastInsertRowid),
+          assistantMessageId: Number(assistantResult.lastInsertRowid)
+        }
+      })
 
-    return Promise.resolve(runTx())
+      return runTx()
+    }, 'lưu lượt hội thoại')
   }
 
   async deleteConversation(conversationId: number): Promise<boolean> {
-    const res = this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId)
-    return res.changes > 0
+    return this.safeExecute(() => {
+      const res = this.db.prepare('DELETE FROM conversations WHERE id = ?').run(conversationId)
+      return res.changes > 0
+    }, 'xóa cuộc hội thoại')
   }
 
   async updateConversationTitle(conversationId: number, title: string): Promise<void> {
-    this.db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(title, conversationId)
+    return this.safeExecute(() => {
+      this.db.prepare('UPDATE conversations SET title = ? WHERE id = ?').run(title, conversationId)
+    }, 'cập nhật tiêu đề cuộc hội thoại')
   }
 
   async getPersistenceEnabled(): Promise<boolean> {
-    const row = this.db
-      .prepare('SELECT value FROM settings WHERE key = ?')
-      .get('chat_persistence') as { value: string } | undefined
+    return this.safeExecute(() => {
+      const row = this.db
+        .prepare('SELECT value FROM settings WHERE key = ?')
+        .get('chat_persistence') as { value: string } | undefined
 
-    if (!row) {
-      return true
-    }
+      if (!row) {
+        return true
+      }
 
-    return row.value === 'true' || row.value === '1'
+      return row.value === 'true' || row.value === '1'
+    }, 'lấy trạng thái lưu trữ')
   }
 
   async setPersistenceEnabled(enabled: boolean): Promise<void> {
-    const stmt = this.db.prepare(`
-      INSERT INTO settings (key, value)
-      VALUES ('chat_persistence', ?)
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value
-    `)
-    stmt.run(enabled ? 'true' : 'false')
-    return Promise.resolve()
+    return this.safeExecute(() => {
+      const stmt = this.db.prepare(`
+        INSERT INTO settings (key, value)
+        VALUES ('chat_persistence', ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+      `)
+      stmt.run(enabled ? 'true' : 'false')
+    }, 'cập nhật trạng thái lưu trữ')
   }
 
   async clearHistory(conversationId?: number): Promise<void> {
-    if (conversationId !== undefined) {
-      this.db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(conversationId)
-    } else {
-      this.db.prepare('DELETE FROM messages').run()
-    }
-    return Promise.resolve()
+    return this.safeExecute(() => {
+      if (conversationId !== undefined) {
+        this.db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(conversationId)
+      } else {
+        this.db.prepare('DELETE FROM messages').run()
+      }
+    }, 'xóa lịch sử trò chuyện')
   }
 }

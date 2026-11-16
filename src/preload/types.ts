@@ -1,7 +1,10 @@
+export type StandardErrorCode =
+  'MODEL_UNAVAILABLE' | 'MODEL_TIMEOUT' | 'MODEL_BAD_RESPONSE' | 'DB_UNAVAILABLE'
+
 export interface ChatSendResponse {
   success: boolean
   text?: string
-  code?: string
+  code?: StandardErrorCode | string
   error?: string
 }
 
@@ -10,13 +13,14 @@ export type ChatHealthStatus = 'healthy' | 'starting' | 'unhealthy' | 'model_mis
 export interface ChatHealthResponse {
   ok: boolean
   status?: ChatHealthStatus
+  code?: StandardErrorCode
   reason?: string
 }
 
 export interface ChatStreamCallbacks {
   onChunk: (chunk: string) => void
   onComplete: (fullText: string) => void
-  onError: (error: { code?: string; message: string }) => void
+  onError: (error: { code?: StandardErrorCode | string; message: string }) => void
 }
 
 export interface HistoryMessageItem {
@@ -69,6 +73,7 @@ export interface PvaApi {
   chat: {
     send(content: string): Promise<ChatSendResponse>
     health(): Promise<ChatHealthResponse>
+    startModel?(): Promise<{ success: boolean; error?: string }>
     stream(content: string, callbacks: ChatStreamCallbacks): () => void
     loadHistory(): Promise<ChatHistoryResponse>
     getPersistence(): Promise<ChatPersistenceResponse>

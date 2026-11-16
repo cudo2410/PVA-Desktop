@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import avaImg from './assets/ava.jpg'
 import { HistoryDrawer } from './components/HistoryDrawer'
 import './components/HistoryDrawer.css'
+import { StatusBar } from './components/StatusBar'
+import { useAppState } from './stores/appStateStore'
 import { formatFigmaTimestamp, formatTimeHHmm } from './utils/dateFormat'
 
 export interface ChatMessageItem {
@@ -12,7 +14,42 @@ export interface ChatMessageItem {
   rawCreatedAt?: string | Date
   status?: 'processing' | 'streaming' | 'completed' | 'error'
   error?: string
+  errorCode?: string
 }
+
+const STANDARD_ERROR_MESSAGES: Record<string, string> = {
+  MODEL_UNAVAILABLE:
+    'Không thể kết nối đến máy chủ Ollama. Vui lòng đảm bảo Ollama đang chạy trên máy tính của bạn.',
+  MODEL_TIMEOUT: 'Quá thời gian chờ phản hồi từ mô hình AI (timeout). Vui lòng thử lại.',
+  MODEL_BAD_RESPONSE:
+    'Mô hình phản hồi không đúng cấu trúc hoặc máy chủ Ollama trả về dữ liệu không hợp lệ.',
+  DB_UNAVAILABLE: 'Cơ sở dữ liệu SQLite hiện không khả dụng. Không thể lưu hoặc đọc lịch sử.'
+}
+
+interface SpeechRecognitionEvent {
+  resultIndex: number
+  results: {
+    length: number
+    [index: number]: {
+      [index: number]: {
+        transcript: string
+      }
+    }
+  }
+}
+
+interface SpeechRecognitionInstance {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
 
 function App(): React.JSX.Element {
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
@@ -22,11 +59,12 @@ function App(): React.JSX.Element {
   const [healthStatus, setHealthStatus] = useState<
     'checking' | 'starting' | 'healthy' | 'unhealthy' | 'model_missing'
   >('checking')
-  const [healthReason, setHealthReason] = useState<string | undefined>(undefined)
   const [persistenceEnabled, setPersistenceEnabled] = useState(true)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<number | undefined>(undefined)
 
+  const [appStatus, appStore] = useAppState()
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const isCheckingRef = useRef(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -190,22 +228,25 @@ function App(): React.JSX.Element {
         const res = await window.api.chat.health()
         if (res.ok) {
           setHealthStatus('healthy')
-          setHealthReason(undefined)
           retryCountRef.current = 0
+          if (appStatus.state === 'Error') {
+            appStore.setIdle()
+          }
         } else if (res.status === 'starting') {
           setHealthStatus('starting')
-          setHealthReason(res.reason || 'Đang tự động khởi chạy Ollama...')
+          appStore.setProcessing('Đang khởi chạy Ollama...')
         } else if (res.status === 'model_missing') {
           setHealthStatus('model_missing')
-          setHealthReason(res.reason)
+          appStore.setError('MODEL_UNAVAILABLE', res.reason)
         } else {
           setHealthStatus('unhealthy')
-          setHealthReason(res.reason)
+          appStore.setError('MODEL_UNAVAILABLE', res.reason || 'Ollama ngoại tuyến')
         }
       }
     } catch (err) {
       setHealthStatus('unhealthy')
-      setHealthReason(err instanceof Error ? err.message : 'Lỗi kết nối')
+      const msg = err instanceof Error ? err.message : 'Lỗi kết nối'
+      appStore.setError('MODEL_UNAVAILABLE', msg)
     } finally {
       isCheckingRef.current = false
     }
@@ -234,7 +275,116 @@ function App(): React.JSX.Element {
     }, delay)
 
     return (): void => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [healthStatus])
+
+  const lastUserMessageTextRef = useRef<string>('')
+
+  const handleReconnectOllama = async (): Promise<void> => {
+    appStore.setProcessing('Đang kết nối lại tới Ollama...')
+    setHealthStatus('starting')
+    try {
+      if (window.api?.chat?.startModel) {
+        await window.api.chat.startModel()
+      }
+    } catch (err) {
+      console.warn('Lỗi khi kích hoạt khởi động Ollama:', err)
+    }
+    await checkHealth(true)
+  }
+
+  const handleRetryLastMessage = async (): Promise<void> => {
+    const textToRetry = lastUserMessageTextRef.current
+    if (!textToRetry) {
+      const userMsgs = messages.filter((m) => m.role === 'user')
+      if (userMsgs.length > 0) {
+        const lastContent = userMsgs[userMsgs.length - 1].content
+        if (healthStatus === 'unhealthy' && window.api?.chat?.startModel) {
+          appStore.setProcessing('Đang kết nối lại...')
+          setHealthStatus('starting')
+          await window.api.chat.startModel()
+          await checkHealth(true)
+        }
+        handleSend(lastContent)
+      }
+      return
+    }
+
+    if (healthStatus === 'unhealthy' && window.api?.chat?.startModel) {
+      appStore.setProcessing('Đang kết nối lại...')
+      setHealthStatus('starting')
+      await window.api.chat.startModel()
+      await checkHealth(true)
+    }
+    handleSend(textToRetry)
+  }
+
+  const handleToggleMic = (): void => {
+    if (appStatus.state === 'Listening') {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop()
+        } catch {
+          // ignore
+        }
+        recognitionRef.current = null
+      }
+      appStore.setIdle()
+      return
+    }
+
+    appStore.setListening('Đang lắng nghe bạn nói...')
+
+    const SpeechRec =
+      (
+        window as unknown as {
+          SpeechRecognition?: SpeechRecognitionConstructor
+          webkitSpeechRecognition?: SpeechRecognitionConstructor
+        }
+      ).SpeechRecognition ||
+      (
+        window as unknown as {
+          SpeechRecognition?: SpeechRecognitionConstructor
+          webkitSpeechRecognition?: SpeechRecognitionConstructor
+        }
+      ).webkitSpeechRecognition
+
+    if (SpeechRec) {
+      try {
+        const recognition = new SpeechRec()
+        recognition.lang = 'vi-VN'
+        recognition.continuous = false
+        recognition.interimResults = true
+
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          let transcript = ''
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            transcript += event.results[i][0].transcript
+          }
+          if (transcript.trim()) {
+            setInput(transcript)
+          }
+        }
+
+        recognition.onerror = () => {
+          appStore.setIdle()
+          recognitionRef.current = null
+        }
+
+        recognition.onend = () => {
+          recognitionRef.current = null
+          if (appStatus.state === 'Listening') {
+            appStore.setIdle()
+          }
+        }
+
+        recognition.start()
+        recognitionRef.current = recognition
+      } catch (err) {
+        console.warn('Lỗi SpeechRecognition:', err)
+      }
+    }
+  }
 
   const handleSend = (contentOverride?: string): void => {
     const contentToSend = (contentOverride ?? input).trim()
@@ -242,7 +392,20 @@ function App(): React.JSX.Element {
       return
     }
 
+    if (appStatus.state === 'Listening') {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop()
+        } catch {
+          // ignore
+        }
+        recognitionRef.current = null
+      }
+    }
+
+    lastUserMessageTextRef.current = contentToSend
     setError(null)
+    appStore.setProcessing('Đang suy nghĩ & xử lý...')
     const nowDate = new Date()
     const nowTimeStr = formatTimeHHmm(nowDate)
     const userMsgId = `${Date.now()}-user`
@@ -279,8 +442,14 @@ function App(): React.JSX.Element {
     }
 
     if (window.api?.chat?.stream) {
+      let hasReceivedFirstChunk = false
+
       const cancel = window.api.chat.stream(contentToSend, {
         onChunk: (chunk: string) => {
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true
+            appStore.setSpeaking('Đang phản hồi...')
+          }
           setMessages((prev) =>
             prev.map((msg) => {
               if (msg.id === assistantMsgId) {
@@ -308,27 +477,36 @@ function App(): React.JSX.Element {
             })
           )
           setIsGenerating(false)
+          appStore.setIdle()
           abortRef.current = null
           setTimeout(() => textareaRef.current?.focus(), 50)
         },
         onError: (streamErr) => {
+          const rawCode = streamErr.code || 'MODEL_UNAVAILABLE'
+          const friendlyMessage =
+            streamErr.message ||
+            STANDARD_ERROR_MESSAGES[rawCode] ||
+            'Mô hình không phản hồi hoặc đã xảy ra lỗi.'
+
           setMessages((prev) =>
             prev.map((msg) => {
               if (msg.id === assistantMsgId) {
                 return {
                   ...msg,
                   status: 'error',
-                  error: streamErr.message
+                  error: friendlyMessage,
+                  errorCode: rawCode
                 }
               }
               return msg
             })
           )
           setError({
-            code: streamErr.code,
-            message: streamErr.message || 'Mô hình không phản hồi hoặc đã xảy ra lỗi.'
+            code: rawCode,
+            message: friendlyMessage
           })
           setIsGenerating(false)
+          appStore.setError(rawCode, friendlyMessage)
           abortRef.current = null
           setTimeout(() => textareaRef.current?.focus(), 50)
         }
@@ -347,17 +525,27 @@ function App(): React.JSX.Element {
                   : msg
               )
             )
+            appStore.setIdle()
           } else {
-            throw new Error(res.error || 'Lỗi gửi tin nhắn.')
+            const rawCode = res.code || 'MODEL_UNAVAILABLE'
+            const msg = res.error || STANDARD_ERROR_MESSAGES[rawCode] || 'Lỗi gửi tin nhắn.'
+            const err = new Error(msg)
+            ;(err as unknown as { code?: string }).code = rawCode
+            throw err
           }
         } catch (fallbackErr) {
           const errMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+          const rawCode = (fallbackErr as unknown as { code?: string })?.code || 'MODEL_UNAVAILABLE'
+          const friendlyMessage = errMsg || STANDARD_ERROR_MESSAGES[rawCode] || 'Lỗi gửi tin nhắn.'
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === assistantMsgId ? { ...msg, status: 'error', error: errMsg } : msg
+              msg.id === assistantMsgId
+                ? { ...msg, status: 'error', error: friendlyMessage, errorCode: rawCode }
+                : msg
             )
           )
-          setError({ message: errMsg })
+          setError({ code: rawCode, message: friendlyMessage })
+          appStore.setError(rawCode, friendlyMessage)
         } finally {
           setIsGenerating(false)
           setTimeout(() => textareaRef.current?.focus(), 50)
@@ -389,19 +577,24 @@ function App(): React.JSX.Element {
         <div className="brand">
           <div className="brand-avatar-wrapper">
             <img src={avaImg} alt="Asada Sinon Avatar" className="brand-avatar-img" />
-            <span className="brand-avatar-status-dot" aria-label="Trạng thái trực tuyến" />
+            <span
+              className={`brand-avatar-status-dot ${
+                appStatus.state === 'Idle'
+                  ? 'status-idle'
+                  : appStatus.state === 'Listening'
+                    ? 'status-listening'
+                    : appStatus.state === 'Processing'
+                      ? 'status-processing'
+                      : appStatus.state === 'Speaking'
+                        ? 'status-speaking'
+                        : 'status-offline'
+              }`}
+              aria-label={`Trạng thái: ${appStatus.label}`}
+            />
           </div>
           <div className="brand-title">
             <span className="brand-name">Asada Sinon</span>
-            <span className="brand-subtitle">
-              {isGenerating
-                ? 'Đang phản hồi...'
-                : healthStatus === 'healthy'
-                  ? 'Trợ lý ảo thông minh · Sẵn sàng'
-                  : healthStatus === 'starting'
-                    ? 'Đang khởi động Ollama...'
-                    : 'Ngoại tuyến'}
-            </span>
+            <span className="brand-subtitle">{appStatus.detail || appStatus.label}</span>
           </div>
         </div>
 
@@ -417,45 +610,26 @@ function App(): React.JSX.Element {
                 : 'Đang ở chế độ Đoạn chat tạm thời (Bấm để bật lưu lịch sử)'
             }
           >
-            <span className="persistence-icon">{persistenceEnabled ? '💾' : '🕒'}</span>
             <span className="persistence-label">
               {persistenceEnabled ? 'Lưu lịch sử' : 'Đoạn chat tạm thời'}
             </span>
           </button>
 
-          {/* Ẩn trạng thái "Ollama sẵn sàng" khi healthy; chỉ hiển thị khi khởi động hoặc có sự cố */}
-          {healthStatus !== 'healthy' && (
-            <div
-              className="status-pill"
-              title={
-                healthReason
-                  ? `Chi tiết: ${healthReason} (Nhấp để thử kết nối lại)`
-                  : 'Trạng thái kết nối mô hình (Nhấp để làm mới)'
+          {/* Thanh trạng thái ứng dụng động (Nhiệm vụ 6: Idle / Listening / Processing / Speaking / Error) */}
+          <StatusBar
+            onRetry={() => void handleReconnectOllama()}
+            onStopListening={() => {
+              if (recognitionRef.current) {
+                try {
+                  recognitionRef.current.stop()
+                } catch {
+                  // ignore
+                }
+                recognitionRef.current = null
               }
-              onClick={() => void checkHealth(true)}
-            >
-              <span
-                className={`status-dot ${
-                  healthStatus === 'starting'
-                    ? 'status-starting'
-                    : healthStatus === 'model_missing'
-                      ? 'status-missing'
-                      : healthStatus === 'unhealthy'
-                        ? 'status-offline'
-                        : 'status-checking'
-                }`}
-              />
-              <span className="status-label">
-                {healthStatus === 'starting'
-                  ? 'Đang khởi động Ollama...'
-                  : healthStatus === 'model_missing'
-                    ? 'Chưa tải model qwen3:1.7b'
-                    : healthStatus === 'unhealthy'
-                      ? 'Ollama ngoại tuyến (Bấm thử lại)'
-                      : 'Kiểm tra Ollama...'}
-              </span>
-            </div>
-          )}
+              appStore.setIdle()
+            }}
+          />
 
           {/* Nút mở/đóng Lịch sử trò chuyện ở góc phải của header */}
           <button
@@ -488,21 +662,21 @@ function App(): React.JSX.Element {
                 className="prompt-btn"
                 onClick={() => handleSend('Xin chào, bạn là ai?')}
               >
-                💬 Xin chào, bạn là ai?
+                Xin chào, bạn là ai?
               </button>
               <button
                 type="button"
                 className="prompt-btn"
                 onClick={() => handleSend('Hãy tóm tắt ngắn gọn vai trò của Asada Sinon.')}
               >
-                💡 Tóm tắt vai trò của Asada Sinon
+                Tóm tắt vai trò của Asada Sinon
               </button>
               <button
                 type="button"
                 className="prompt-btn"
                 onClick={() => handleSend('Hôm nay tôi cần quản lý công việc thế nào?')}
               >
-                📋 Quản lý công việc hôm nay
+                Quản lý công việc hôm nay
               </button>
             </div>
           </div>
@@ -541,8 +715,38 @@ function App(): React.JSX.Element {
                           </div>
                         ) : msg.status === 'error' ? (
                           <div className="bubble-error-content">
-                            <span className="bubble-error-icon">⚠️</span>
-                            <span>{msg.error || 'Đã xảy ra lỗi khi tạo phản hồi.'}</span>
+                            <div className="bubble-error-header">
+                              <span className="bubble-error-icon">⚠️</span>
+                              {msg.errorCode && (
+                                <span className="bubble-error-code">[{msg.errorCode}]</span>
+                              )}
+                            </div>
+                            <div className="bubble-error-message">
+                              {msg.error || 'Đã xảy ra lỗi khi tạo phản hồi.'}
+                            </div>
+                            <div className="bubble-error-actions">
+                              <button
+                                type="button"
+                                className="bubble-retry-btn"
+                                onClick={() => void handleRetryLastMessage()}
+                                title="Thử lại"
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  width="12"
+                                  height="12"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <polyline points="23 4 23 10 17 10" />
+                                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                                </svg>
+                                <span>Thử lại</span>
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <div className="message-text">
@@ -575,17 +779,27 @@ function App(): React.JSX.Element {
         <div className="error-banner">
           <span className="error-banner-icon">⚠️</span>
           <div className="error-banner-body">
-            <strong>Lỗi phản hồi:</strong> {error.message}
-            {error.code && <span className="error-banner-code">{error.code}</span>}
+            {error.code && <span className="error-banner-code">[{error.code}]</span>}
+            <span className="error-banner-text">{error.message}</span>
           </div>
-          <button
-            type="button"
-            className="error-banner-close"
-            onClick={() => setError(null)}
-            title="Đóng"
-          >
-            ✕
-          </button>
+          <div className="error-banner-actions">
+            <button
+              type="button"
+              className="error-banner-retry"
+              onClick={() => void handleRetryLastMessage()}
+              title="Thử gửi lại"
+            >
+              Thử lại
+            </button>
+            <button
+              type="button"
+              className="error-banner-close"
+              onClick={() => setError(null)}
+              title="Đóng"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
@@ -613,22 +827,28 @@ function App(): React.JSX.Element {
               ref={textareaRef}
               rows={1}
               className="chat-input"
-              placeholder="iMessage (Nhập tin nhắn cho Asada Sinon...)"
+              placeholder={
+                appStatus.state === 'Listening'
+                  ? 'Đang lắng nghe giọng nói của bạn...'
+                  : 'iMessage (Nhập tin nhắn cho Asada Sinon...)'
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isGenerating}
             />
 
-            {/* Nút micro dictation phong cách iOS */}
+            {/* Nút micro dictation phong cách iOS (kích hoạt trạng thái Listening) */}
             <button
               type="button"
-              className="composer-action-btn mic-btn"
-              onClick={() => {
-                textareaRef.current?.focus()
-              }}
-              title="Nhập bằng giọng nói (Voice input)"
-              aria-label="Micro"
+              className={`composer-action-btn mic-btn ${appStatus.state === 'Listening' ? 'is-listening' : ''}`}
+              onClick={handleToggleMic}
+              title={
+                appStatus.state === 'Listening'
+                  ? 'Dừng lắng nghe'
+                  : 'Nhập bằng giọng nói (Voice input)'
+              }
+              aria-label={appStatus.state === 'Listening' ? 'Dừng lắng nghe' : 'Micro'}
             >
               <svg
                 className="mic-svg"

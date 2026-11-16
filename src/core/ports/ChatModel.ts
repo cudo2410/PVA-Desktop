@@ -1,4 +1,5 @@
 import { Message } from '../models/ChatMessage'
+import { StandardErrorCode } from '../models/ModelError'
 
 export interface ChatModelOptions {
   maxTokens?: number
@@ -11,6 +12,7 @@ export type ChatModelStatus = 'healthy' | 'starting' | 'unhealthy' | 'model_miss
 export interface ChatModelHealth {
   ok: boolean
   status?: ChatModelStatus
+  code?: StandardErrorCode
   reason?: string
 }
 
