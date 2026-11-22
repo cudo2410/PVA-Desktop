@@ -108,7 +108,7 @@ export class SqliteConversationRepository implements ConversationRepository {
           (row.title === 'Cuộc hội thoại chính' ||
             row.title === 'Cuộc trò chuyện mới' ||
             row.title === 'Hội thoại mới' ||
-            /^Hội thoại \d{2}\/\d{2}/.test(row.title))
+            /^Hội thoại \d{2}[-/]\d{2}/.test(row.title))
         ) {
           const clean = row.firstUserMessage
             .trim()

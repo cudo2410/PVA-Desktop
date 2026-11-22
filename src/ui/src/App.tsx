@@ -18,11 +18,9 @@ export interface ChatMessageItem {
 }
 
 const STANDARD_ERROR_MESSAGES: Record<string, string> = {
-  MODEL_UNAVAILABLE:
-    'Không thể kết nối đến máy chủ Ollama. Vui lòng đảm bảo Ollama đang chạy trên máy tính của bạn.',
-  MODEL_TIMEOUT: 'Quá thời gian chờ phản hồi từ mô hình AI (timeout). Vui lòng thử lại.',
-  MODEL_BAD_RESPONSE:
-    'Mô hình phản hồi không đúng cấu trúc hoặc máy chủ Ollama trả về dữ liệu không hợp lệ.',
+  MODEL_UNAVAILABLE: 'Đã mất kết nối với Ollama',
+  MODEL_TIMEOUT: 'Quá thời gian chờ phản hồi từ mô hình AI. Vui lòng thử lại.',
+  MODEL_BAD_RESPONSE: 'Dữ liệu phản hồi từ mô hình AI không hợp lệ.',
   DB_UNAVAILABLE: 'Cơ sở dữ liệu SQLite hiện không khả dụng. Không thể lưu hoặc đọc lịch sử.'
 }
 
@@ -324,16 +322,15 @@ function App(): React.JSX.Element {
           appStore.setProcessing('Đang khởi chạy Ollama...')
         } else if (res.status === 'model_missing') {
           setHealthStatus('model_missing')
-          appStore.setError('MODEL_UNAVAILABLE', res.reason)
+          appStore.setError('MODEL_UNAVAILABLE', 'Chưa có mô hình AI trong Ollama')
         } else {
           setHealthStatus('unhealthy')
-          appStore.setError('MODEL_UNAVAILABLE', res.reason || 'Ollama ngoại tuyến')
+          appStore.setError('MODEL_UNAVAILABLE', 'Đã mất kết nối với Ollama')
         }
       }
-    } catch (err) {
+    } catch {
       setHealthStatus('unhealthy')
-      const msg = err instanceof Error ? err.message : 'Lỗi kết nối'
-      appStore.setError('MODEL_UNAVAILABLE', msg)
+      appStore.setError('MODEL_UNAVAILABLE', 'Đã mất kết nối với Ollama')
     } finally {
       isCheckingRef.current = false
     }
@@ -573,10 +570,21 @@ function App(): React.JSX.Element {
         },
         onError: (streamErr) => {
           const rawCode = streamErr.code || 'MODEL_UNAVAILABLE'
-          const friendlyMessage =
-            streamErr.message ||
-            STANDARD_ERROR_MESSAGES[rawCode] ||
-            'Mô hình không phản hồi hoặc đã xảy ra lỗi.'
+          const isOllamaConnError =
+            rawCode === 'MODEL_UNAVAILABLE' ||
+            Boolean(
+              streamErr.message &&
+              (streamErr.message.toLowerCase().includes('ollama') ||
+                streamErr.message.toLowerCase().includes('unavailable') ||
+                streamErr.message.toLowerCase().includes('connect') ||
+                streamErr.message.toLowerCase().includes('fetch failed'))
+            )
+
+          const friendlyMessage = isOllamaConnError
+            ? 'Đã mất kết nối với Ollama'
+            : streamErr.message && !streamErr.message.includes('MODEL_')
+              ? streamErr.message
+              : STANDARD_ERROR_MESSAGES[rawCode] || 'Đã mất kết nối với Ollama'
 
           setMessages((prev) =>
             prev.map((msg) => {
@@ -585,16 +593,21 @@ function App(): React.JSX.Element {
                   ...msg,
                   status: 'error',
                   error: friendlyMessage,
-                  errorCode: rawCode
+                  errorCode: undefined
                 }
               }
               return msg
             })
           )
-          setError({
-            code: rawCode,
-            message: friendlyMessage
-          })
+          // Ẩn thanh error-banner đỏ khi lỗi kết nối Ollama
+          if (!isOllamaConnError) {
+            setError({
+              code: undefined,
+              message: friendlyMessage
+            })
+          } else {
+            setError(null)
+          }
           setIsGenerating(false)
           appStore.setError(rawCode, friendlyMessage)
           abortRef.current = null
@@ -626,15 +639,28 @@ function App(): React.JSX.Element {
         } catch (fallbackErr) {
           const errMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
           const rawCode = (fallbackErr as unknown as { code?: string })?.code || 'MODEL_UNAVAILABLE'
-          const friendlyMessage = errMsg || STANDARD_ERROR_MESSAGES[rawCode] || 'Lỗi gửi tin nhắn.'
+          const isOllamaConnError =
+            rawCode === 'MODEL_UNAVAILABLE' ||
+            errMsg.toLowerCase().includes('ollama') ||
+            errMsg.toLowerCase().includes('unavailable') ||
+            errMsg.toLowerCase().includes('connect')
+
+          const friendlyMessage = isOllamaConnError
+            ? 'Đã mất kết nối với Ollama'
+            : STANDARD_ERROR_MESSAGES[rawCode] || 'Đã mất kết nối với Ollama'
+
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMsgId
-                ? { ...msg, status: 'error', error: friendlyMessage, errorCode: rawCode }
+                ? { ...msg, status: 'error', error: friendlyMessage, errorCode: undefined }
                 : msg
             )
           )
-          setError({ code: rawCode, message: friendlyMessage })
+          if (!isOllamaConnError) {
+            setError({ code: undefined, message: friendlyMessage })
+          } else {
+            setError(null)
+          }
           appStore.setError(rawCode, friendlyMessage)
         } finally {
           setIsGenerating(false)
@@ -656,6 +682,27 @@ function App(): React.JSX.Element {
     (lastIdx, msg, idx) => (msg.role === 'user' ? idx : lastIdx),
     -1
   )
+
+  const getHeaderSubtitle = (): string => {
+    if (appStatus.state === 'Error') {
+      const detail = (appStatus.detail || '').trim()
+      const lower = detail.toLowerCase()
+      if (
+        !detail ||
+        detail === 'Ngoại tuyến / Lỗi hệ thống' ||
+        detail === 'Báo lỗi' ||
+        lower.includes('model_unavailable') ||
+        lower.includes('model unavailable')
+      ) {
+        return 'Đã mất kết nối với Ollama'
+      }
+      return detail
+    }
+    return appStatus.detail || appStatus.label
+  }
+
+  const headerSubtitle = getHeaderSubtitle()
+
   return (
     <div className={`chat-app split-layout ${isResizing ? 'is-resizing' : ''}`}>
       {/* Cột trái (Chiếm phần còn lại của màn hình): Sân khấu Nhân vật Asada Sinon */}
@@ -698,7 +745,7 @@ function App(): React.JSX.Element {
                           ? 'status-speaking'
                           : 'status-offline'
                 }`}
-                aria-label={`Trạng thái: ${appStatus.label}`}
+                aria-label={`Trạng thái: ${appStatus.state === 'Error' ? headerSubtitle : appStatus.label}`}
               />
             </div>
             <div className="brand-title">
@@ -711,12 +758,10 @@ function App(): React.JSX.Element {
                   }
                 }}
                 title={
-                  appStatus.state === 'Error'
-                    ? 'Nhấp để kết nối lại với Ollama'
-                    : appStatus.detail || appStatus.label
+                  appStatus.state === 'Error' ? 'Nhấp để kết nối lại với Ollama' : headerSubtitle
                 }
               >
-                {appStatus.detail || appStatus.label}
+                {headerSubtitle}
               </span>
             </div>
           </div>
@@ -833,13 +878,25 @@ function App(): React.JSX.Element {
                           ) : msg.status === 'error' ? (
                             <div className="bubble-error-content">
                               <div className="bubble-error-header">
-                                <span className="bubble-error-icon">⚠️</span>
-                                {msg.errorCode && (
-                                  <span className="bubble-error-code">[{msg.errorCode}]</span>
-                                )}
-                              </div>
-                              <div className="bubble-error-message">
-                                {msg.error || 'Đã xảy ra lỗi khi tạo phản hồi.'}
+                                <span className="bubble-error-icon" aria-hidden="true">
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="14"
+                                    height="14"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="12" y1="8" x2="12" y2="12" />
+                                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                                  </svg>
+                                </span>
+                                <span className="bubble-error-message">
+                                  {msg.error || 'Đã mất kết nối với Ollama'}
+                                </span>
                               </div>
                               <div className="bubble-error-actions">
                                 <button
@@ -891,12 +948,26 @@ function App(): React.JSX.Element {
           )}
         </main>
 
-        {/* Error banner */}
+        {/* Error banner (chỉ hiển thị cho các lỗi hệ thống khác, không hiện cho kết nối Ollama) */}
         {error && (
           <div className="error-banner">
-            <span className="error-banner-icon">⚠️</span>
+            <span className="error-banner-icon" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            </span>
             <div className="error-banner-body">
-              {error.code && <span className="error-banner-code">[{error.code}]</span>}
               <span className="error-banner-text">{error.message}</span>
             </div>
             <div className="error-banner-actions">

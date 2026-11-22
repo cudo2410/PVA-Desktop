@@ -85,12 +85,12 @@ Các điểm nổi bật về mặt kỹ thuật:
 
 ### Đang phát triển
 
-- **Lưu lịch sử hội thoại vào Database:** Sử dụng SQLite nhúng lưu `conversations` và `messages` theo transaction.
-- **Quản lý công việc (Task Management):** Các thành phần giao diện xem, thêm và cập nhật trạng thái công việc.
+- **Spike công nghệ & Cổng G1 (Tuần 3):** Đánh giá mô hình STT (`whisper.cpp` vs `PhoWhisper-small`), thử giọng TTS (`Piper` / `Microsoft An`) và đo hiệu năng Avatar trên bộ 30 câu thu âm thực tế `g1-dataset/`.
+- **Quản lý công việc & Nhắc nhở (Task & Reminder Management):** Triển khai `TaskService`, `ReminderService`, `InAppScheduler` và giao diện theo dõi công việc.
 
 ### Dự kiến triển khai theo lộ trình
 
-- **Tầng Repository SQLite:** Triển khai `SqliteTaskRepo`, `SqliteConversationRepo` trong `src/adapters/db`.
+- **Tầng Repository SQLite:** Triển khai `SqliteTaskRepository`, `SqliteReminderRepository` trong `src/adapters/db`.
 - **Bộ chuẩn hóa và trích xuất Intent:** Tinh chỉnh System Prompt tiếng Việt và bộ định tuyến lệnh (`RuleRouter` / `IntentRouter`).
 - **Hiển thị Avatar 3D:** Tích hợp Three.js / VRM hiển thị hoạt cảnh nhân vật 3D.
 - **Nhận dạng và tổng hợp giọng nói:** Tích hợp STT ngoại tuyến (Whisper.cpp) và TTS (Piper / Microsoft An).
@@ -149,7 +149,7 @@ flowchart TD
     ChatPort -.->|Triển khai bởi| OllamaAdapter
     TaskPort -.->|Triển khai bởi| DBAdapter
     OllamaAdapter -->|HTTP POST /api/chat| OllamaServer
-    DBAdapter -->|TCP 3306 / SQL Migrations| LocalDB
+    DBAdapter -->|better-sqlite3 WAL / SQL Migrations| LocalDB
     DomainModels -.-> Core
 ```
 
@@ -220,7 +220,7 @@ flowchart TD
 │           ├── App.tsx                 # Component gốc của ứng dụng
 │           ├── env.d.ts                # Định kiểu môi trường Vite
 │           └── main.tsx                # Điểm gắn kết React vào DOM
-├── .env.example                        # File mẫu cấu hình biến môi trường kết nối MySQL
+├── .env.example                        # File mẫu cấu hình biến môi trường (Ollama, SQLite path)
 ├── electron-builder.yml                # Cấu hình đóng gói bộ cài đặt ứng dụng
 ├── electron.vite.config.ts             # Cấu hình Vite cho Main, Preload và UI
 ├── eslint.config.mjs                   # Cấu hình kiểm tra chuẩn code ESLint
@@ -405,7 +405,7 @@ Các file sau khi đóng gói sẽ được tạo ra tại thư mục `dist/`.
    - Lưu trữ `conversations` và `messages` vào SQLite Embedded trong transaction.
 
 2. **Mốc M2 & M3 (Tuần 3–5): Quản lý công việc, Nhắc nhở, Hồ sơ và Quyền thao tác**
-   - Triển khai `TaskService`, `MySqlTaskRepo`, `ReminderService` và `InAppScheduler`.
+   - Triển khai `TaskService`, `SqliteTaskRepository`, `ReminderService` và `InAppScheduler`.
    - Xây dựng `RuleRouter`, `PermissionGuard` và quản lý `allowlist.json`.
 
 3. **Mốc M4 & M5 (Tuần 6–8): Giọng nói, Avatar 3D, Kiểm thử và Đóng gói MVP**

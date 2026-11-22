@@ -235,11 +235,32 @@ export class ChatService {
     }
   }
 
+  private async ensureConversationTitle(question: string): Promise<void> {
+    if (this.repository) {
+      this.persistenceEnabled = await this.repository.getPersistenceEnabled()
+      if (this.persistenceEnabled) {
+        if (!this.activeConversationId) {
+          const conv = await this.repository.getOrCreateActiveConversation()
+          this.activeConversationId = conv.id
+        }
+        const existingMessages = await this.repository.getConversationMessages(
+          this.activeConversationId
+        )
+        if (existingMessages.length === 0) {
+          const newTitle = this.formatConversationTitle(question)
+          await this.repository.updateConversationTitle(this.activeConversationId, newTitle)
+        }
+      }
+    }
+  }
+
   async send(content: string, opts?: Partial<ChatModelOptions>): Promise<ChatServiceResponse> {
     const trimmed = (content || '').trim()
     if (!trimmed) {
       throw new Error('Nội dung tin nhắn không được để trống.')
     }
+
+    await this.ensureConversationTitle(trimmed)
 
     const userMessage: Message = {
       role: 'user',
@@ -268,6 +289,8 @@ export class ChatService {
     if (!trimmed) {
       throw new Error('Nội dung tin nhắn không được để trống.')
     }
+
+    await this.ensureConversationTitle(trimmed)
 
     const userMessage: Message = {
       role: 'user',

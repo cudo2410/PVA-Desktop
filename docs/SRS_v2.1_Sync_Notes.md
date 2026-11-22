@@ -76,12 +76,10 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
     2. `MODEL_TIMEOUT`: Khi thời gian xử lý suy luận vượt quá hạn mức (`timeoutMs = 60s`).
     3. `MODEL_BAD_RESPONSE`: Khi Ollama API trả về HTTP 500, lỗi nội bộ, chuỗi NDJSON hỏng hoặc thiếu trường dữ liệu `content`.
     4. `DB_UNAVAILABLE`: Khi SQLite gặp lỗi I/O, database bị khóa (`busy/locked`), file CSDL lỗi hoặc không thể đọc/ghi.
-  - **Trải nghiệm UI khi tắt Ollama:**
-    - Subtitle trên Header chuyển sang `Ngoại tuyến (MODEL_UNAVAILABLE)`.
-    - Chấm trạng thái nhỏ ở góc Avatar chuyển từ xanh sang đỏ/xám (`status-offline`).
-    - Nút / Huy hiệu hiển thị cảnh báo offline, bấm vào có thể thử kết nối lại.
-    - Bong bóng lỗi hiển thị rõ ràng mã lỗi `[MODEL_UNAVAILABLE]` kèm nút "Thử lại".
-    - Thanh Error Banner ở chân trang hiển thị đồng bộ mã lỗi.
+  - **Trải nghiệm UI khi mất kết nối Ollama:**
+    - Chấm trạng thái nhỏ ở góc Avatar chuyển sang màu xám slate dịu (`#64748b`, class `status-offline`), không sử dụng màu đỏ cảnh báo gắt.
+    - Dòng trạng thái (`.brand-subtitle`) dưới tên Asada Sinon hiển thị nhẹ nhàng `"Đã mất kết nối với Ollama"` với màu xám slate `#94a3b8` (hover `#f1f5f9`), có thể nhấp để kết nối lại; đối với các lỗi khác (`MODEL_TIMEOUT`, `DB_UNAVAILABLE`, thiếu mô hình) vẫn giữ thông điệp mô tả thân thiện tương ứng và ẩn hoàn toàn mã kỹ thuật thô `[MODEL_UNAVAILABLE]`.
+    - Ẩn thanh Error Banner đỏ bên dưới khung chat khi mất kết nối Ollama; trong bong bóng phản hồi chỉ hiển thị thông báo mô tả thân thiện kèm nút "Thử lại".
 
 ### 2.7. Store trạng thái ứng dụng & Thanh trạng thái động (Phase 2 - Nhiệm vụ 6)
 
@@ -99,11 +97,11 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
 
 ### 2.8. Bộ dữ liệu kiểm thử nhận dạng Cổng G1 (`g1-dataset/` - Nhiệm vụ 7 Tuần 2)
 
-- **Mục tiêu:** Cung cấp bộ 30 câu lệnh tiếng Việt chuẩn hóa, phục vụ Cổng G1 (Tuần 3) để đánh giá mô hình STT (Whisper.cpp và PhoWhisper-small GGML) về độ chính xác (WER) và độ trễ nhận dạng.
-- **Quy chuẩn âm thanh:**
-  - Định dạng: WAV PCM 16-bit (không nén).
+- **Mục tiêu:** Cung cấp bộ 30 câu lệnh tiếng Việt chuẩn hóa với bản thu âm giọng người thật cho đủ 30/30 câu (`cmd_01.wav` → `cmd_30.wav`), phục vụ Cổng G1 (Tuần 3) để đánh giá mô hình STT (Whisper.cpp và PhoWhisper-small GGML) về độ chính xác (WER) và độ trễ nhận dạng.
+- **Quy chuẩn âm thanh (đã xác minh thực tế 30/30 file thu thật):**
+  - Định dạng: WAV PCM 16-bit (không nén), 100% đạt kiểm định header RIFF/WAVE.
   - Tần số lấy mẫu: 16000 Hz (16 kHz).
-  - Kênh âm thanh: 1 kênh (Mono).
+  - Kênh âm thanh: 1 kênh (Mono), tổng thời lượng thực tế `113.28` giây.
 - **Phân nhóm câu lệnh (30 câu):**
   - `app_control`: 8 câu lệnh điều khiển ứng dụng & hệ thống (Chrome, Spotify, tắt máy, âm lượng, chụp màn hình,...).
   - `task_management`: 8 câu lệnh nhắc nhở, lịch trình, danh sách việc cần làm.
@@ -173,3 +171,151 @@ Các nội dung này được chuẩn hóa nhằm đồng bộ trực tiếp và
 - **Trải nghiệm người dùng:**
   - Danh sách cuộc hội thoại trong **History Drawer** hiển thị rõ ràng chủ đề theo câu hỏi đầu tiên thay vì các nhãn ngày giờ chung chung.
   - Người dùng có thể tìm kiếm nhanh cuộc hội thoại trong thanh tìm kiếm bằng các từ khóa xuất hiện trong câu hỏi đầu tiên của họ.
+
+---
+
+## 4. Kiến trúc hệ thống Ports & Adapters thực tế & Sơ đồ minh họa (Mục 8 SRS v2.1)
+
+_Ngày cập nhật đồng bộ: 17/11/2026_
+
+### 4.1. Sơ đồ kiến trúc tổng thể & Kiến trúc kết nối đa tầng (Hình 8.1 SRS v2.1)
+
+![Kiến trúc Hexagonal Ports & Adapters của PVA](architecture_hexagonal_pva.png)
+
+_Hình 8.1. Sơ đồ kiến trúc hệ thống và kết nối đa tầng PVA (Ports & Adapters / Hexagonal Architecture)._
+
+#### Sơ đồ cấu trúc & kết nối dạng Mermaid (Dễ hiểu, Tối giản):
+
+```mermaid
+flowchart TD
+    subgraph UI["1. TẦNG GIAO DIỆN (Renderer Process - Chromium)"]
+        direction TB
+        subgraph UISplit["Bố cục Split View"]
+            Stage["Sân khấu Nhân vật (60%)<br/>Dual Video Seamless Loop<br/>(Idle / Listening / Speaking)"]
+            ChatUI["Khung Hội Thoại (40%)<br/>Apple Liquid Glass Dark<br/>History Drawer &amp; Composer (32px)"]
+        end
+        State["AppStateStore &amp; StatusBar<br/>(5 trạng thái: Idle / Listening / Processing / Speaking / Error)"]
+        WebAudio["Web Audio API / Micro<br/>(Thu âm chuẩn 16kHz Mono)"]
+    end
+
+    UI -- "① Gọi hàm định kiểu TypeScript<br/>[window.api.*]" --> Bridge
+
+    subgraph Preload["2. TẦNG CẦU NỐI BẢO MẬT (Preload Script)"]
+        direction TB
+        Bridge["contextBridge.exposeInMainWorld('api', ...)<br/>• sandbox: true | contextIsolation: true | nodeIntegration: false<br/>• Định kiểu tập trung: src/preload/types.ts"]
+        Envelope["Đóng gói Envelope chuẩn hóa:<br/>{ success: boolean, data?: T, error?: string, code?: ErrorCode }"]
+    end
+
+    Bridge -- "② Gửi thông điệp IPC nhị phân nội bộ<br/>[ipcRenderer.invoke &lt;channel&gt;]" --> IPC
+
+    subgraph Main["3. TIẾN TRÌNH CHÍNH (Main Process - Ports &amp; Adapters)"]
+        direction TB
+        subgraph Inbound["Inbound Adapters (src/adapters/ipc/)"]
+            IPC["IPC Handlers (ipcMain.handle)<br/>• chat:send, chat:history:*<br/>• tasks:*<br/>• system:health"]
+        end
+
+        IPC -- "③ Gọi nghiệp vụ trực tiếp (in-memory)<br/>[TypeScript Method Calls]" --> Services
+
+        subgraph Core["CORE DOMAIN (src/core/) - Nghiệp vụ cốt lõi"]
+            direction TB
+            subgraph Services["Domain Services"]
+                ChatSvc["ChatService<br/>• Sliding Window Context 10 lượt<br/>• DEFAULT_SYSTEM_PROMPT tiếng Việt<br/>• Auto-naming theo câu hỏi đầu"]
+                TaskSvc["TaskService<br/>• Quản lý Task &amp; Trạng thái"]
+            end
+            subgraph Ports["Ports (Interfaces trừu tượng)"]
+                P_AI["ChatModel Port"]
+                P_DB["ConversationRepository Port"]
+                P_Task["TaskRepository Port"]
+            end
+            subgraph Models["Domain Models"]
+                M_Task["Task (CHECK Status)"]
+                M_Err["ModelError (4 mã lỗi chuẩn)"]
+            end
+            Services --> Ports
+            Services --> Models
+        end
+
+        Ports -- "④ Hiện thực hóa Port Contract<br/>[Dependency Inversion]" --> Outbound
+
+        subgraph Outbound["Outbound Adapters (src/adapters/)"]
+            direction TB
+            AdaAI["AI Adapter (src/adapters/ai/)<br/>• OllamaChatModel<br/>• OllamaProcessManager"]
+            AdaDB["DB Adapter (src/adapters/db/)<br/>• SqliteConversationRepository<br/>• migrator.ts (migrations/*.sql)"]
+            AdaOS["OS Adapter (src/main/)<br/>• BrowserWindow, Menu, Tray, Safe Shell"]
+        end
+    end
+
+    AdaAI -- "⑤a. HTTP REST /api/chat<br/>[JSON Stream, think: false, port 11434]" --> Ollama
+    AdaDB -- "⑤b. C/C++ Native Node-API FFI<br/>[better-sqlite3 WAL + Transaction ACID]" --> SQLite
+    WebAudio -. "⑤c. Đối chiếu kiểm thử STT<br/>[Dataset G1 16kHz Mono WAV]" .- G1Dataset
+    AdaOS -- "⑤d. Windows Win32 APIs<br/>[File System, ExecFile Whitelist]" --> WinOS
+
+    subgraph Infra["4. HẠ TẦNG CỤC BỘ &amp; HỆ ĐIỀU HÀNH (Local Infrastructure)"]
+        Ollama[("Ollama Service (127.0.0.1:11434)<br/>Mô hình Qwen3:1.7b Local Offline")]
+        SQLite[("CSDL Nhúng SQLite (pva.sqlite)<br/>appData / WAL Mode / FTS5 Engine")]
+        G1Dataset[("G1 Dataset &amp; Audio Engine<br/>30 câu lệnh mẫu Cổng G1 STT")]
+        WinOS["Hệ điều hành Windows Desktop<br/>Win32 Platform &amp; File System"]
+    end
+```
+
+### 4.2. Đặc tả kiến trúc kết nối đa tầng (Connection Architecture)
+
+1. **① Kết nối Giao diện ➔ Cầu nối (UI ➔ Preload)**:
+   - **Giao thức**: Typed Method Invocation qua `window.api.*`.
+   - **Đặc tả**: Renderer được cô lập hoàn toàn (`contextIsolation: true`). UI gọi các method có sẵn được định kiểu trong `src/preload/types.ts`. Không thể gọi hàm Node.js hay mở socket tùy tiện.
+2. **② Kết nối Cầu nối ➔ Điều phối IPC (Preload ➔ Inbound IPC)**:
+   - **Giao thức**: Electron IPC nhị phân nội bộ qua `ipcRenderer.invoke(channel, payload)`.
+   - **Kênh kết nối**: `chat:send`, `chat:history:load`, `chat:history:set-persistence`, `chat:conversations:*`, `tasks:*`, `system:health`.
+   - **Gói tin phản hồi**: Luôn bọc trong Envelope `{ success: boolean, data?: T, error?: string, code?: ErrorCode }`.
+3. **③ Kết nối Điều phối IPC ➔ Nghiệp vụ cốt lõi (Inbound ➔ Core Domain)**:
+   - **Giao thức**: Direct In-memory TypeScript Calls.
+   - **Đặc tả**: IPC handler đóng vai trò Controller: validate input, gọi method tương ứng trong `ChatService` hoặc `TaskService`, bắt ngoại lệ và map sang mã lỗi chuẩn.
+4. **④ Kết nối Nghiệp vụ cốt lõi ➔ Cổng ngoại vi (Core Domain ➔ Outbound Ports)**:
+   - **Giao thức**: Dependency Inversion (Đảo ngược phụ thuộc qua Interface Polymorphism).
+   - **Đặc tả**: Core chỉ giao tiếp qua `ChatModel` và `ConversationRepository`. Module nghiệp vụ hoàn toàn không biết CSDL là SQLite hay AI Engine là Ollama.
+5. **⑤a Kết nối AI Adapter ➔ Ollama Service**:
+   - **Giao thức**: HTTP REST nội bộ (`http://127.0.0.1:11434/api/chat`).
+   - **Cấu hình**: Payload JSON kèm `think: false` (triệt tiêu rác suy nghĩ), timeout 60 giây, tiếp nhận luồng NDJSON Stream.
+6. **⑤b Kết nối DB Adapter ➔ SQLite Embedded**:
+   - **Giao thức**: C/C++ Native Node-API FFI in-process (`better-sqlite3`).
+   - **Cấu hình**: Tệp CSDL `pva.sqlite` tại thư mục `userData`, cơ chế ghi đệm WAL, foreign keys ON, bọc transaction ACID nguyên tử cho toàn bộ lượt chat.
+7. **⑤c Kết nối Voice / Audio ➔ Micro & G1 Dataset**:
+   - **Giao thức**: Web Audio API ghi âm trực tiếp micro, chuẩn hóa định dạng 16kHz Mono 16-bit PCM WAV (RIFF header), phục vụ kiểm thử đánh giá Cổng G1 STT.
+8. **⑤d Kết nối OS Adapter ➔ Hệ điều hành Windows**:
+   - **Giao thức**: Win32 Desktop APIs thông qua Electron (`BrowserWindow` kính mờ trong suốt, `shell.openExternal` với whitelist URL HTTPS an toàn, không yêu cầu quyền Admin).
+
+### 4.3. Đặc tả phân tầng thực tế theo hiện trạng mã nguồn
+
+1. **Tầng Giao diện (Renderer Process - `src/ui/`)**:
+   - **Công nghệ**: React 19, TypeScript, ngôn ngữ thiết kế Apple Liquid Glass (Dark Theme), CSS Tokens.
+   - **Bố cục Split View**:
+     - _Character Stage (60%)_: Hiển thị hoạt ảnh nhân vật ảo (Sinon) bằng cơ chế Dual Video Seamless Loop (hai thẻ `<video>` luân phiên với chuyển tiếp zoom 1.025, blur dissolve 4px, light flash 0.55s) triệt tiêu hoàn toàn bóng ma và giật khung hình; đồng bộ 3 trạng thái hoạt ảnh (`Idle`, `Listening`, `Speaking`). Tối ưu tài nguyên GPU/RAM, không dùng Three.js nặng nề.
+     - _Chat Panel (40% Resizable)_: Cho phép co giãn trực quan từ 280px đến 70vw qua thanh trượt chia đôi (Split Resizer); Toolbar Composer đồng bộ chiều cao 32px thẳng hàng; Drawer lịch sử hội thoại trượt mượt mà.
+   - **Quản lý trạng thái giao diện**: `AppStateStore` độc lập quản lý 5 trạng thái vận hành (`Idle`, `Listening`, `Processing`, `Speaking`, `Error`) kết hợp `StatusBar` động phản ứng theo sóng âm.
+   - **Nguyên tắc an ninh**: UI tuyệt đối không import thư viện Node.js, Electron hay truy cập trực tiếp CSDL/hệ điều hành. Cổng tương tác duy nhất là `window.api`.
+
+2. **Tầng Cầu nối Bảo mật (Preload Script - `src/preload/`)**:
+   - **Cơ chế**: Sử dụng `contextBridge.exposeInMainWorld('api', ...)` với `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
+   - **Định kiểu 100%**: File `src/preload/types.ts` làm Single Source of Truth cho toàn bộ API contracts.
+   - **Giao thức Envelope**: Dữ liệu gửi từ IPC về UI luôn được đóng gói trong envelope chuẩn `{ success: boolean, data?: T, error?: string, code?: ErrorCode }`, triệt tiêu hoàn toàn nguy cơ rò rỉ stack trace hoặc lỗi kỹ thuật thô.
+
+3. **Tầng Tiến trình Chính & Kiến trúc Hexagonal (Main Process - `src/main/`, `src/core/`, `src/adapters/`)**:
+   - **Core Domain (`src/core/`) - Trung tâm độc lập**:
+     - _Models (`src/core/models/`)_: `ChatMessage`, `Conversation`, `Task` (ràng buộc giá trị `TaskStatus` đồng bộ chặt chẽ giữa TypeScript union type và SQLite `CHECK`), `ModelError` với 4 mã lỗi chuẩn hóa (`MODEL_UNAVAILABLE`, `MODEL_TIMEOUT`, `MODEL_BAD_RESPONSE`, `DB_UNAVAILABLE`).
+     - _Ports (`src/core/ports/`)_: `ChatModel` (hợp đồng kết nối AI), `ConversationRepository` (hợp đồng lưu trữ hội thoại), `TaskRepository`, `ConfigRepository`.
+     - _Services (`src/core/services/`)_:
+       - `ChatService`: Điều phối ngữ cảnh cửa sổ trượt (Sliding Window Context 10 lượt ~ 20 tin nhắn gần nhất), ghép nối `DEFAULT_SYSTEM_PROMPT` tiếng Việt, tự động tạo tiêu đề tóm tắt hội thoại theo câu hỏi đầu tiên, cấu hình `think: false` cho dòng mô hình Qwen3 để loại bỏ reasoning tokens rác và tối ưu độ trễ dưới 200ms, điều phối lưu trữ hội thoại trong Transaction nguyên tử.
+       - `TaskService`: Quản lý danh sách công việc và kiểm soát luồng trạng thái hợp lệ.
+   - **Inbound Adapters (`src/adapters/ipc/`)**:
+     - `chat.ipc.ts`: Lắng nghe các kênh `chat:*`, validate dữ liệu đầu vào, gọi `ChatService`, map lỗi sang mã chuẩn.
+     - `tasks.ipc.ts`: Lắng nghe các kênh `tasks:*`, kiểm tra ràng buộc trạng thái `TaskStatus`.
+     - `system.ipc.ts`: Kiểm tra tình trạng kết nối Ollama và CSDL SQLite.
+   - **Outbound Adapters (`src/adapters/`)**:
+     - _AI Adapter (`src/adapters/ai/`)_: `OllamaChatModel` (kết nối REST API `http://127.0.0.1:11434/api/chat`, timeout 60s, parse luồng NDJSON, tự động fallback lọc `<think>`), `OllamaProcessManager` (kiểm tra trạng thái cổng 11434 và model `qwen3:1.7b`).
+     - _Database Adapter (`src/adapters/db/`)_: `SqliteConversationRepository` hiện thực cổng lưu trữ qua `better-sqlite3`, chế độ WAL, foreign keys ON, bọc transaction ACID bằng `db.transaction(...)`.
+
+4. **Hạ tầng Cục bộ & Dịch vụ Nền (Local Services & Infrastructure)**:
+   - **Ollama Engine**: Chạy cục bộ trên máy tính người dùng (`127.0.0.1:11434`), tải và chạy mô hình `qwen3:1.7b` phục vụ suy luận ngôn ngữ tiếng Việt hoàn toàn offline.
+   - **SQLite 3 Embedded**: File CSDL `pva.sqlite` lưu tại `app.getPath('userData')/pva.sqlite`. Cơ chế migration tự động `migrator.ts` duyệt các file SQL trong `migrations/`, bảng ảo FTS5 `messages_fts` tìm kiếm toàn văn siêu tốc, bảng `settings` quản lý công tắc lưu trữ `chat_persistence`.
+   - **Audio Engine & G1 Dataset**: Bộ dữ liệu 30 câu lệnh tiếng Việt chuẩn 16kHz mono WAV (`g1-dataset/`), bộ công cụ ghi âm trực tiếp Web Audio API phục vụ đánh giá mô hình STT Cổng G1.
+   - **Hệ điều hành Windows**: Tích hợp an toàn qua Electron API (`shell.openExternal` với whitelist https/mailto, `BrowserWindow` cấu hình CSP bảo mật).

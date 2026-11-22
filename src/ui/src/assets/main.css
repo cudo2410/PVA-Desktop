@@ -180,8 +180,8 @@ body {
 }
 
 .brand-avatar-status-dot.status-offline {
-  background: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+  background: #64748b;
+  box-shadow: 0 0 6px rgba(100, 116, 139, 0.4);
 }
 
 .brand-title {
@@ -569,8 +569,8 @@ body {
 }
 
 .status-offline {
-  background-color: #ef4444;
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  background-color: #64748b;
+  box-shadow: 0 0 6px rgba(100, 116, 139, 0.4);
 }
 
 @keyframes pulseDot {
@@ -919,41 +919,37 @@ body {
   }
 }
 
-/* Bubble Error State */
+/* Bubble Error State (Dịu mắt, không đỏ rực, không dùng mã lỗi thô) */
 .bubble-error-content {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: #fca5a5;
-  font-size: 13.5px;
+  color: #cbd5e1;
+  font-size: 13px;
 }
 
 .bubble-error-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: 600;
+  gap: 7px;
+  font-weight: 500;
+  color: #cbd5e1;
 }
 
 .bubble-error-icon {
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  color: #94a3b8;
+  flex-shrink: 0;
 }
 
 .bubble-error-code {
-  font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace;
-  font-size: 11.5px;
-  padding: 1px 6px;
-  background: rgba(239, 68, 68, 0.25);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  border-radius: 4px;
-  color: #fecaca;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  display: none;
 }
 
 .bubble-error-message {
   line-height: 1.45;
-  color: #fecaca;
+  color: #cbd5e1;
 }
 
 .bubble-error-actions {
@@ -984,26 +980,29 @@ body {
   color: #34d399;
 }
 
-/* Error Banner */
+/* Error Banner (Dark Glass tối giản) */
 .error-banner {
   margin: 0 20px 14px;
-  padding: 10px 16px;
-  background: rgba(239, 68, 68, 0.18);
+  padding: 8px 14px;
+  background: rgba(30, 41, 59, 0.85);
   backdrop-filter: var(--liquid-glass-blur-sm);
   -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #fecaca;
-  font-size: 13.5px;
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+  gap: 10px;
+  color: #e2e8f0;
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   z-index: 20;
 }
 
 .error-banner-icon {
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  color: #94a3b8;
+  font-size: 15px;
   flex-shrink: 0;
 }
 
@@ -1016,19 +1015,12 @@ body {
 }
 
 .error-banner-code {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  color: #fca5a5;
+  display: none;
 }
 
 .error-banner-text {
   line-height: 1.4;
+  color: #e2e8f0;
 }
 
 .error-banner-actions {
@@ -1058,8 +1050,8 @@ body {
 .error-banner-close {
   background: transparent;
   border: none;
-  color: #fca5a5;
-  font-size: 15px;
+  color: #94a3b8;
+  font-size: 14px;
   cursor: pointer;
   padding: 3px 6px;
   border-radius: 4px;
@@ -1743,9 +1735,14 @@ body {
 }
 
 .chat-panel .chat-header .brand-subtitle.is-error-clickable {
-  color: #f87171;
+  color: #94a3b8;
   cursor: pointer;
   text-decoration: underline dotted;
+  transition: color 0.18s ease;
+}
+
+.chat-panel .chat-header .brand-subtitle.is-error-clickable:hover {
+  color: #f1f5f9;
 }
 
 .chat-panel .chat-header .header-meta {

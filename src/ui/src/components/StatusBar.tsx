@@ -53,7 +53,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ onRetry, onStopListening }
           </span>
         )
       case 'Error':
-        return <span className="status-indicator-icon error-icon">⚠️</span>
+        return <span className="status-indicator-dot error-dot" />
     }
   }
 
@@ -73,7 +73,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ onRetry, onStopListening }
       onClick={handleClick}
       title={
         status.state === 'Error'
-          ? `Lỗi: ${status.detail || 'Nhấp để thử kết nối lại'}`
+          ? status.detail || 'Nhấp để thử kết nối lại với Ollama'
           : status.state === 'Listening'
             ? 'Đang nghe giọng nói (Bấm để dừng)'
             : status.detail || status.label
@@ -83,10 +83,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({ onRetry, onStopListening }
     >
       <div className="status-bar-indicator">{renderStateIcon(status.state)}</div>
       <div className="status-bar-text">
-        <span className="status-bar-label">{status.label}</span>
-        {status.state === 'Error' && status.errorCode && (
-          <span className="status-bar-code">[{status.errorCode}]</span>
-        )}
+        <span className="status-bar-label">{status.detail || status.label}</span>
       </div>
       {status.state === 'Error' && <span className="status-bar-action-hint">· Thử lại</span>}
       {status.state === 'Listening' && <span className="status-bar-action-hint">· Dừng</span>}

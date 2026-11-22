@@ -7,8 +7,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.4,
-    "fileSize": 76844
+    "durationSec": 2.76,
+    "fileSize": 88364
   },
   {
     "id": "cmd_02",
@@ -18,8 +18,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.24,
-    "fileSize": 71724
+    "durationSec": 3.06,
+    "fileSize": 97964
   },
   {
     "id": "cmd_03",
@@ -29,8 +29,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.72,
-    "fileSize": 87084
+    "durationSec": 3.54,
+    "fileSize": 113324
   },
   {
     "id": "cmd_04",
@@ -40,8 +40,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.88,
-    "fileSize": 92204
+    "durationSec": 4.2,
+    "fileSize": 134444
   },
   {
     "id": "cmd_05",
@@ -51,8 +51,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.56,
-    "fileSize": 81964
+    "durationSec": 3.24,
+    "fileSize": 103724
   },
   {
     "id": "cmd_06",
@@ -62,8 +62,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.56,
-    "fileSize": 81964
+    "durationSec": 3.3,
+    "fileSize": 105644
   },
   {
     "id": "cmd_07",
@@ -73,8 +73,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.56,
-    "fileSize": 81964
+    "durationSec": 3.48,
+    "fileSize": 111404
   },
   {
     "id": "cmd_08",
@@ -84,8 +84,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.4,
-    "fileSize": 76844
+    "durationSec": 3.54,
+    "fileSize": 113324
   },
   {
     "id": "cmd_09",
@@ -95,8 +95,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.2,
-    "fileSize": 102444
+    "durationSec": 4.38,
+    "fileSize": 140204
   },
   {
     "id": "cmd_10",
@@ -106,8 +106,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.52,
-    "fileSize": 112684
+    "durationSec": 4.92,
+    "fileSize": 157484
   },
   {
     "id": "cmd_11",
@@ -117,8 +117,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.88,
-    "fileSize": 92204
+    "durationSec": 3.96,
+    "fileSize": 126764
   },
   {
     "id": "cmd_12",
@@ -128,8 +128,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.2,
-    "fileSize": 102444
+    "durationSec": 5.04,
+    "fileSize": 161324
   },
   {
     "id": "cmd_13",
@@ -139,8 +139,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.88,
-    "fileSize": 92204
+    "durationSec": 3.78,
+    "fileSize": 121004
   },
   {
     "id": "cmd_14",
@@ -150,8 +150,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.04,
-    "fileSize": 97324
+    "durationSec": 3.9,
+    "fileSize": 124844
   },
   {
     "id": "cmd_15",
@@ -161,8 +161,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.2,
-    "fileSize": 102444
+    "durationSec": 3.9,
+    "fileSize": 124844
   },
   {
     "id": "cmd_16",
@@ -172,8 +172,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.36,
-    "fileSize": 107564
+    "durationSec": 4.68,
+    "fileSize": 149804
   },
   {
     "id": "cmd_17",
@@ -183,8 +183,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.2,
-    "fileSize": 102444
+    "durationSec": 3.36,
+    "fileSize": 107564
   },
   {
     "id": "cmd_18",
@@ -194,8 +194,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.4,
-    "fileSize": 76844
+    "durationSec": 2.7,
+    "fileSize": 86444
   },
   {
     "id": "cmd_19",
@@ -205,8 +205,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.36,
-    "fileSize": 107564
+    "durationSec": 4.32,
+    "fileSize": 138284
   },
   {
     "id": "cmd_20",
@@ -216,8 +216,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.72,
-    "fileSize": 87084
+    "durationSec": 4.26,
+    "fileSize": 136364
   },
   {
     "id": "cmd_21",
@@ -227,8 +227,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.04,
-    "fileSize": 97324
+    "durationSec": 3.9,
+    "fileSize": 124844
   },
   {
     "id": "cmd_22",
@@ -238,8 +238,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.88,
-    "fileSize": 92204
+    "durationSec": 3.66,
+    "fileSize": 117164
   },
   {
     "id": "cmd_23",
@@ -249,8 +249,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.56,
-    "fileSize": 81964
+    "durationSec": 2.76,
+    "fileSize": 88364
   },
   {
     "id": "cmd_24",
@@ -260,8 +260,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.56,
-    "fileSize": 81964
+    "durationSec": 2.94,
+    "fileSize": 94124
   },
   {
     "id": "cmd_25",
@@ -271,8 +271,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.04,
-    "fileSize": 97324
+    "durationSec": 4.32,
+    "fileSize": 138284
   },
   {
     "id": "cmd_26",
@@ -282,8 +282,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.04,
-    "fileSize": 97324
+    "durationSec": 4.86,
+    "fileSize": 155564
   },
   {
     "id": "cmd_27",
@@ -293,8 +293,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.2,
-    "fileSize": 102444
+    "durationSec": 4.32,
+    "fileSize": 138284
   },
   {
     "id": "cmd_28",
@@ -304,8 +304,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.56,
-    "fileSize": 81964
+    "durationSec": 3.66,
+    "fileSize": 117164
   },
   {
     "id": "cmd_29",
@@ -315,8 +315,8 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 3.04,
-    "fileSize": 97324
+    "durationSec": 2.94,
+    "fileSize": 94124
   },
   {
     "id": "cmd_30",
@@ -326,7 +326,7 @@
     "sampleRate": 16000,
     "channels": 1,
     "bitDepth": 16,
-    "durationSec": 2.88,
-    "fileSize": 92204
+    "durationSec": 3.6,
+    "fileSize": 115244
   }
 ]

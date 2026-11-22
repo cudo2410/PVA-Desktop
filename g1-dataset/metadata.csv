@@ -1,31 +1,31 @@
 ﻿id,text,category,filename,sample_rate,channels,bit_depth,duration_sec,file_size
-cmd_01,"Mở trình duyệt Google Chrome",app_control,cmd_01.wav,16000,1,16,2.4,76844
-cmd_02,"Mở ứng dụng Spotify",app_control,cmd_02.wav,16000,1,16,2.24,71724
-cmd_03,"Tắt máy tính sau ba mươi phút",app_control,cmd_03.wav,16000,1,16,2.72,87084
-cmd_04,"Tăng âm lượng lên năm mươi phần trăm",app_control,cmd_04.wav,16000,1,16,2.88,92204
-cmd_05,"Mở trình quản lý tệp tin",app_control,cmd_05.wav,16000,1,16,2.56,81964
-cmd_06,"Chụp ảnh màn hình máy tính",app_control,cmd_06.wav,16000,1,16,2.56,81964
-cmd_07,"Bật chế độ tiết kiệm pin",app_control,cmd_07.wav,16000,1,16,2.56,81964
-cmd_08,"Khởi động lại máy tính",app_control,cmd_08.wav,16000,1,16,2.4,76844
-cmd_09,"Tạo nhắc nhở họp nhóm vào chín giờ sáng mai",task_management,cmd_09.wav,16000,1,16,3.2,102444
-cmd_10,"Thêm công việc hoàn thành báo cáo đồ án vào danh sách",task_management,cmd_10.wav,16000,1,16,3.52,112684
-cmd_11,"Hôm nay tôi có những lịch trình nào",task_management,cmd_11.wav,16000,1,16,2.88,92204
-cmd_12,"Đặt báo thức lúc sáu giờ ba mươi phút sáng",task_management,cmd_12.wav,16000,1,16,3.2,102444
-cmd_13,"Xóa nhắc nhở đi mua sách chiều nay",task_management,cmd_13.wav,16000,1,16,2.88,92204
-cmd_14,"Xem danh sách việc cần làm trong tuần này",task_management,cmd_14.wav,16000,1,16,3.04,97324
-cmd_15,"Đánh dấu công việc nộp bài tập đã hoàn thành",task_management,cmd_15.wav,16000,1,16,3.2,102444
-cmd_16,"Lên lịch hẹn gặp giảng viên hướng dẫn vào thứ sáu",task_management,cmd_16.wav,16000,1,16,3.36,107564
-cmd_17,"Thời tiết hôm nay ở Hà Nội như thế nào",information_search,cmd_17.wav,16000,1,16,3.2,102444
-cmd_18,"Bây giờ là mấy giờ",information_search,cmd_18.wav,16000,1,16,2.4,76844
-cmd_19,"Kiểm tra dung lượng ổ đĩa C còn trống bao nhiêu",information_search,cmd_19.wav,16000,1,16,3.36,107564
-cmd_20,"Giá vàng hôm nay tăng hay giảm",information_search,cmd_20.wav,16000,1,16,2.72,87084
-cmd_21,"Tìm kiếm tài liệu lập trình TypeScript trên mạng",information_search,cmd_21.wav,16000,1,16,3.04,97324
-cmd_22,"Định nghĩa trí tuệ nhân tạo là gì",information_search,cmd_22.wav,16000,1,16,2.88,92204
-cmd_23,"Ngày mai trời có mưa không",information_search,cmd_23.wav,16000,1,16,2.56,81964
-cmd_24,"Xin chào bạn tên là gì",conversation,cmd_24.wav,16000,1,16,2.56,81964
-cmd_25,"Kể cho tôi nghe một câu chuyện cười ngắn",conversation,cmd_25.wav,16000,1,16,3.04,97324
-cmd_26,"Bạn có thể giúp tôi làm những việc gì",conversation,cmd_26.wav,16000,1,16,3.04,97324
-cmd_27,"Hôm nay tâm trạng của tôi không được tốt lắm",conversation,cmd_27.wav,16000,1,16,3.2,102444
-cmd_28,"Cảm ơn bạn rất nhiều nhé",conversation,cmd_28.wav,16000,1,16,2.56,81964
-cmd_29,"Chúc bạn ngủ ngon và có giấc mơ đẹp",conversation,cmd_29.wav,16000,1,16,3.04,97324
-cmd_30,"Tạm biệt và hẹn gặp lại bạn sau",conversation,cmd_30.wav,16000,1,16,2.88,92204
+cmd_01,"Mở trình duyệt Google Chrome",app_control,cmd_01.wav,16000,1,16,2.76,88364
+cmd_02,"Mở ứng dụng Spotify",app_control,cmd_02.wav,16000,1,16,3.06,97964
+cmd_03,"Tắt máy tính sau ba mươi phút",app_control,cmd_03.wav,16000,1,16,3.54,113324
+cmd_04,"Tăng âm lượng lên năm mươi phần trăm",app_control,cmd_04.wav,16000,1,16,4.2,134444
+cmd_05,"Mở trình quản lý tệp tin",app_control,cmd_05.wav,16000,1,16,3.24,103724
+cmd_06,"Chụp ảnh màn hình máy tính",app_control,cmd_06.wav,16000,1,16,3.3,105644
+cmd_07,"Bật chế độ tiết kiệm pin",app_control,cmd_07.wav,16000,1,16,3.48,111404
+cmd_08,"Khởi động lại máy tính",app_control,cmd_08.wav,16000,1,16,3.54,113324
+cmd_09,"Tạo nhắc nhở họp nhóm vào chín giờ sáng mai",task_management,cmd_09.wav,16000,1,16,4.38,140204
+cmd_10,"Thêm công việc hoàn thành báo cáo đồ án vào danh sách",task_management,cmd_10.wav,16000,1,16,4.92,157484
+cmd_11,"Hôm nay tôi có những lịch trình nào",task_management,cmd_11.wav,16000,1,16,3.96,126764
+cmd_12,"Đặt báo thức lúc sáu giờ ba mươi phút sáng",task_management,cmd_12.wav,16000,1,16,5.04,161324
+cmd_13,"Xóa nhắc nhở đi mua sách chiều nay",task_management,cmd_13.wav,16000,1,16,3.78,121004
+cmd_14,"Xem danh sách việc cần làm trong tuần này",task_management,cmd_14.wav,16000,1,16,3.9,124844
+cmd_15,"Đánh dấu công việc nộp bài tập đã hoàn thành",task_management,cmd_15.wav,16000,1,16,3.9,124844
+cmd_16,"Lên lịch hẹn gặp giảng viên hướng dẫn vào thứ sáu",task_management,cmd_16.wav,16000,1,16,4.68,149804
+cmd_17,"Thời tiết hôm nay ở Hà Nội như thế nào",information_search,cmd_17.wav,16000,1,16,3.36,107564
+cmd_18,"Bây giờ là mấy giờ",information_search,cmd_18.wav,16000,1,16,2.7,86444
+cmd_19,"Kiểm tra dung lượng ổ đĩa C còn trống bao nhiêu",information_search,cmd_19.wav,16000,1,16,4.32,138284
+cmd_20,"Giá vàng hôm nay tăng hay giảm",information_search,cmd_20.wav,16000,1,16,4.26,136364
+cmd_21,"Tìm kiếm tài liệu lập trình TypeScript trên mạng",information_search,cmd_21.wav,16000,1,16,3.9,124844
+cmd_22,"Định nghĩa trí tuệ nhân tạo là gì",information_search,cmd_22.wav,16000,1,16,3.66,117164
+cmd_23,"Ngày mai trời có mưa không",information_search,cmd_23.wav,16000,1,16,2.76,88364
+cmd_24,"Xin chào bạn tên là gì",conversation,cmd_24.wav,16000,1,16,2.94,94124
+cmd_25,"Kể cho tôi nghe một câu chuyện cười ngắn",conversation,cmd_25.wav,16000,1,16,4.32,138284
+cmd_26,"Bạn có thể giúp tôi làm những việc gì",conversation,cmd_26.wav,16000,1,16,4.86,155564
+cmd_27,"Hôm nay tâm trạng của tôi không được tốt lắm",conversation,cmd_27.wav,16000,1,16,4.32,138284
+cmd_28,"Cảm ơn bạn rất nhiều nhé",conversation,cmd_28.wav,16000,1,16,3.66,117164
+cmd_29,"Chúc bạn ngủ ngon và có giấc mơ đẹp",conversation,cmd_29.wav,16000,1,16,2.94,94124
+cmd_30,"Tạm biệt và hẹn gặp lại bạn sau",conversation,cmd_30.wav,16000,1,16,3.6,115244
