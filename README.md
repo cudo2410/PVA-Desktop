@@ -85,8 +85,15 @@ Các điểm nổi bật về mặt kỹ thuật:
 
 ### Đang phát triển
 
-- **Spike công nghệ & Cổng G1 (Tuần 3):** Đánh giá mô hình STT (`whisper.cpp` vs `PhoWhisper-small`), thử giọng TTS (`Piper` / `Microsoft An`) và đo hiệu năng Avatar trên bộ 30 câu thu âm thực tế `g1-dataset/`.
-- **Quản lý công việc & Nhắc nhở (Task & Reminder Management):** Triển khai `TaskService`, `ReminderService`, `InAppScheduler` và giao diện theo dõi công việc.
+- **Quản lý công việc & Nhắc nhở (Tuần 4 – Task & Reminder Management):** Triển khai `TaskService`, `SqliteTaskRepository`, `ReminderService`, `InAppScheduler`, `RuleRouter` và giao diện theo dõi công việc.
+
+### Đã hoàn thành Cổng kiểm định G1 (Tuần 3 – Mốc M2)
+
+- **Báo cáo Cổng G1 ([`docs/G1_Report.md`](docs/G1_Report.md)):**
+  - **STT:** Đã chuyển đổi `vinai/PhoWhisper-small` sang GGML và so sánh với `Whisper-small` gốc trên bộ 30 câu `g1-dataset` (`PhoWhisper-small` giảm WER từ `90,76%` xuống `56,30%`, tốc độ câu ~5s đạt `1,87–2,30 s ≤ 3 s`, nhưng WER chưa đạt ngưỡng `≤ 15%` → **hạ `FR-03` từ Must xuống Should** theo SRS v2.1).
+  - **TTS (ĐÃ CHỐT):** **Microsoft An** (WinRT `Windows.Media.SpeechSynthesis`, `13–39 ms/câu`, chấm **`4/5`**) được **chốt** làm giọng đọc tùy chọn MVP; loại **Piper 1.8.0** (`vi_VN-vais1000-medium`, `556–947 ms/câu`, chấm **`1/5`**, `GPL-3.0-or-later`).
+  - **Spike Avatar & NFR-02/NFR-03:** `VRM + three-vrm` đạt `163,6 FPS` / `206 MB` RAM Renderer; `Dual Video` đạt `165,0 FPS` / `116,9 MB` RAM Renderer; `qwen3:1.7b` đạt TTFT TB `230,8 ms` (P95 `268,8 ms`), tốc độ `26,4 tok/s`, VRAM `171–179 MiB`.
+  - **Điểm mở rộng Voice Ports:** Đã định nghĩa `SpeechToText` (`src/core/ports/SpeechToText.ts`) và `TextToSpeech` (`src/core/ports/TextToSpeech.ts`) sẵn sàng cho Giai đoạn 2.
 
 ### Dự kiến triển khai theo lộ trình
 

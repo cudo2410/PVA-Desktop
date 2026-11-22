@@ -319,3 +319,41 @@ flowchart TD
    - **SQLite 3 Embedded**: File CSDL `pva.sqlite` lưu tại `app.getPath('userData')/pva.sqlite`. Cơ chế migration tự động `migrator.ts` duyệt các file SQL trong `migrations/`, bảng ảo FTS5 `messages_fts` tìm kiếm toàn văn siêu tốc, bảng `settings` quản lý công tắc lưu trữ `chat_persistence`.
    - **Audio Engine & G1 Dataset**: Bộ dữ liệu 30 câu lệnh tiếng Việt chuẩn 16kHz mono WAV (`g1-dataset/`), bộ công cụ ghi âm trực tiếp Web Audio API phục vụ đánh giá mô hình STT Cổng G1.
    - **Hệ điều hành Windows**: Tích hợp an toàn qua Electron API (`shell.openExternal` với whitelist https/mailto, `BrowserWindow` cấu hình CSP bảo mật).
+
+
+---
+
+## 5. Kết quả Spike công nghệ, Cổng kiểm định G1 (Mốc M2) & Điểm mở rộng Voice Ports (Tuần 3)
+
+_Ngày cập nhật đồng bộ: 22/11/2026_
+
+### 5.1. Kết quả kiểm định Cổng G1 (STT, TTS, Avatar) & Quyết định FR-03
+Chi tiết bảng số đo đầy đủ được lưu tại `docs/G1_Report.md`. Tóm tắt số liệu thực nghiệm trên máy mục tiêu (i5-12500H 16 luồng, RTX 3050 Ti 4 GB VRAM, Windows 11):
+
+- **STT (`whisper.cpp b5907` CPU OpenBLAS trên bộ 30 câu `g1-dataset`, 238 từ):**
+  - `Whisper-small` gốc (`ggml-small.bin`, greedy): Corpus WER = **`90,76%`**, thời gian câu ~5s = `2.034 ms` infer / `2.490 ms` wall.
+  - `PhoWhisper-small` GGML (`ggml-phowhisper-small.bin`, chuyển đổi từ `vinai/PhoWhisper-small`, license **BSD-3-Clause**):
+    - Greedy (`-bs 1 -bo 1`): Corpus WER = **`58,40%`**, câu ~5s = **`1.867 ms`** infer / **`2.369 ms`** wall.
+    - Beam 5 (`-bs 5 -bo 5`): Corpus WER = **`56,30%`**, câu ~5s = **`2.298 ms`** infer / **`2.805 ms`** wall.
+  - **Kết luận STT Cổng G1:** Tốc độ **ĐẠT** (≤ 3.000 ms) nhưng độ chính xác **KHÔNG ĐẠT** (WER `56,30% > 15%` do nhiễu/độ lớn không đồng đều của micro laptop và từ mượn tiếng Anh như Google Chrome, Spotify, TypeScript).
+  - **Quyết định FR-03 (Mốc M2):** **Hạ `FR-03` (nhập liệu bằng giọng nói STT) từ `Must` xuống `Should`** theo Mục 2.3 SRS v2.1; MVP tập trung chat văn bản + nghiệp vụ cốt lõi và tích hợp tùy chọn TTS bằng **`Microsoft An`** (Tuần 6).
+- **TTS (`Piper 1.8.0` vs `Microsoft An`) – ĐÃ CHỐT:**
+  - `Piper 1.8.0` (`OHF-Voice/piper1-gpl`, `vi_VN-vais1000-medium`, yêu cầu Piper ≥ 1.5; engine license `GPL-3.0-or-later`, dataset `CC-BY-4.0`): tốc độ ổn định **`556–947 ms/câu`** (`RTF ≈ 0,149`) — **Chấm điểm: `1/5` → LOẠI**.
+  - `Microsoft An` (Windows OneCore gọi qua WinRT `Windows.Media.SpeechSynthesis`): tốc độ ổn định **`13,1–39,2 ms/câu`** (`RTF ≈ 0,004`), không tăng dung lượng bộ cài — **Chấm điểm: `4/5` → CHỐT LÀM GIỌNG ĐỌC TTS CHÍNH THỨC (tùy chọn MVP)**.
+- **Spike Avatar (`VRM + @pixiv/three-vrm` vs `Dual Video Seamless Loop`) khi `qwen3:1.7b` chạy đồng thời:**
+  - **VRM 3D (68.692 tam giác):** `163,6 FPS` avg (`157,1` min), Renderer RAM max **`206,0 MB`**, tổng RAM Electron `833,5 MB`, hệ thống CPU TB `89,6%`, VRAM max **`171 MiB`**.
+  - **Dual Video (hiện tại – `CharacterStage.tsx`):** `165,0 FPS` avg (`164,9` min), Renderer RAM max **`116,9 MB`**, tổng RAM Electron `675,1 MB`, hệ thống CPU TB `75,8%`, VRAM max **`179 MiB`**.
+  - **Quyết định Avatar:** Cả hai đều đạt chuẩn NFR-03; MVP **duy trì Dual Video Seamless Loop** để tiết kiệm RAM/CPU và đơn giản hóa đóng gói; VRM 3D được chứng minh khả thi cho Giai đoạn 2.
+
+### 5.2. Số liệu nền lần đầu NFR-02 và NFR-03 (chốt ngưỡng sơ bộ Mục 6 SRS v2.1)
+- **NFR-02 (`qwen3:1.7b`, `think: false`, `num_gpu: 0`, 20 câu tiếng Việt):**
+  - Trạng thái "Đang xử lý" trên UI: **`< 16 ms`** (đồng bộ trước IPC, đạt ngưỡng ≤ 200 ms).
+  - Cold start: TTFT `3.016,3 ms`.
+  - Trạng thái ấm (20 câu): TTFT TB = **`230,8 ms`**, P50 = `234,1 ms`, P95 = **`268,8 ms`**, Max = `270,9 ms` (**ĐẠT** mục tiêu ≤ 2.000 ms); Tổng thời gian TB = `4.628,5 ms`; Tốc độ TB = **`26,4 tokens/giây`**.
+- **NFR-03 (Tài nguyên):**
+  - RAM tiến trình giao diện (Renderer): **`116,9 MB`** (Video) / **`206,0 MB`** (VRM) — **ĐẠT** (≤ 1.024 MB).
+  - VRAM GPU RTX 3050 Ti: **`171–179 MiB`** — **ĐẠT** (≤ 3.584 MiB / 3,5 GB). Ghi nhận: Driver NVIDIA `546.30` phát sinh lỗi CUDA kernel image với Ollama `0.40.15`, nên ứng dụng vận hành ổn định bằng chế độ CPU AVX2 (`num_gpu: 0`).
+
+### 5.3. Bổ sung Hợp đồng Port giọng nói (Mục 8.2 SRS v2.1)
+- **`src/core/ports/SpeechToText.ts`**: Port trừu tượng cho nhận dạng giọng nói (`health()`, `transcribeFile()`, `transcribeBuffer()`), chuẩn hóa mã lỗi `SttErrorCode`.
+- **`src/core/ports/TextToSpeech.ts`**: Port trừu tượng cho tổng hợp tiếng nói (`health()`, `listVoices()`, `synthesize()`, `stop()`), chuẩn hóa mã lỗi `TtsErrorCode`.
