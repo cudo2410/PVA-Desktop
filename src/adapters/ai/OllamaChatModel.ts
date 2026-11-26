@@ -131,6 +131,13 @@ export class OllamaChatModel implements ChatModel {
       const isRunning = await this.processManager.isServerRunning(1500)
 
       if (!isRunning) {
+        if (this.processManager.isStarting()) {
+          return {
+            ok: false,
+            status: 'starting',
+            reason: 'Đang khởi chạy Ollama...'
+          }
+        }
         return {
           ok: false,
           status: 'unhealthy',
@@ -140,8 +147,9 @@ export class OllamaChatModel implements ChatModel {
         }
       }
 
-      // 2. Kiểm tra danh sách mô hình từ Ollama (/api/tags)
-      const tagsRes = await fetch(`${this.baseUrl}/api/tags`, {
+      // 2. Kiểm tra danh sách mô hình từ Ollama (/api/tags) — ưu tiên 127.0.0.1 tránh chậm IPv6 trên Windows
+      const targetUrl = this.baseUrl.replace('localhost', '127.0.0.1')
+      const tagsRes = await fetch(`${targetUrl}/api/tags`, {
         method: 'GET',
         signal: AbortSignal.timeout(4000)
       })

@@ -3,8 +3,22 @@ import avaImg from './assets/ava.jpg'
 import { CharacterStage } from './components/CharacterStage'
 import { HistoryDrawer } from './components/HistoryDrawer'
 import './components/HistoryDrawer.css'
+import { TasksDrawer } from './components/TasksDrawer'
+import { ReminderToast } from './components/ReminderToast'
+import { useTasks } from './hooks/useTasks'
+import { useReminders } from './hooks/useReminders'
 import { useAppState } from './stores/appStateStore'
 import { formatFigmaTimestamp, formatTimeHHmm } from './utils/dateFormat'
+import type { ChatHealthResponse } from '../../preload/types'
+
+const HEALTH_POLL_INITIAL_MS = 100
+const HEALTH_POLL_STARTING_MS = 1200
+const HEALTH_POLL_UNHEALTHY_FAST_MS = 2500
+const HEALTH_POLL_UNHEALTHY_SLOW_MS = 15000
+const HEALTH_POLL_MODEL_MISSING_MS = 10000
+const HEALTH_POLL_HEALTHY_MS = 30000
+const STARTING_TIMEOUT_MS = 15000
+const MAX_FAST_RETRIES = 5
 
 export interface ChatMessageItem {
   id: string
@@ -59,29 +73,45 @@ function App(): React.JSX.Element {
   >('checking')
   const [persistenceEnabled, setPersistenceEnabled] = useState(true)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [isTasksOpen, setIsTasksOpen] = useState(false)
   const [activeConversationId, setActiveConversationId] = useState<number | undefined>(undefined)
-  // Trạng thái thu phóng kích thước khung chat (Resizable Split View)
-  // Mặc định khi mở lên: Phần video chuyển động chiếm 3/5 (60%) chiều ngang -> Khung chat chiếm 2/5 (40%)
-  const getDefaultChatWidth = (): number => {
-    if (typeof window !== 'undefined' && window.innerWidth > 0) {
-      return Math.round(window.innerWidth * 0.4)
-    }
-    return 512
-  }
 
-  const [chatWidth, setChatWidth] = useState<number>(() => {
+  const tasksState = useTasks()
+  const remindersState = useReminders()
+
+  // Mở thẳng ngăn kéo Công việc & Nhắc nhở khi bấm "Xem nhắc nhở" từ cửa sổ nổi Desktop
+  useEffect(() => {
+    if (!window.api?.reminders?.onOpenDrawer) return
+    const unsubscribe = window.api.reminders.onOpenDrawer(() => {
+      setIsHistoryOpen(false)
+      setIsTasksOpen(true)
+    })
+    return (): void => unsubscribe()
+  }, [])
+  // Trạng thái thu phóng kích thước khung chat theo tỉ lệ % viewport (Responsive Split View)
+  // Mặc định: Sân khấu nhân vật 60% <-> Khung chat 40%, giới hạn an toàn 28%..65%
+  const [chatWidthPct, setChatWidthPct] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem('pva_chat_panel_width_custom')
-      if (saved) {
-        const parsed = parseInt(saved, 10)
-        if (!isNaN(parsed) && parsed >= 280 && parsed <= 1400) {
+      const savedPct = localStorage.getItem('pva_chat_panel_width_pct')
+      if (savedPct) {
+        const parsed = parseFloat(savedPct)
+        if (!Number.isNaN(parsed) && parsed >= 28 && parsed <= 65) {
           return parsed
+        }
+      }
+      // Chuyển đổi an toàn nếu người dùng đã lưu kích thước px cũ
+      const legacyPx = localStorage.getItem('pva_chat_panel_width_custom')
+      if (legacyPx && typeof window !== 'undefined' && window.innerWidth > 0) {
+        const parsedPx = parseInt(legacyPx, 10)
+        if (!Number.isNaN(parsedPx)) {
+          const converted = Math.round((parsedPx / window.innerWidth) * 1000) / 10
+          return Math.max(28, Math.min(65, converted))
         }
       }
     } catch {
       // ignore
     }
-    return getDefaultChatWidth()
+    return 40
   })
   const [isResizing, setIsResizing] = useState<boolean>(false)
   const isResizingRef = useRef<boolean>(false)
@@ -112,9 +142,12 @@ function App(): React.JSX.Element {
     isResizingRef.current = true
 
     const startX = e.clientX
-    // Đọc kích thước pixel thực tế của khung chat tại thời điểm bắt đầu kéo
+    // Đọc kích thước pixel thực tế của khung chat tại thời điểm bắt đầu kéo rồi quy đổi sang % viewport
     const chatPanelEl = document.querySelector('.chat-panel') as HTMLElement | null
-    const startWidth = chatPanelEl ? chatPanelEl.getBoundingClientRect().width : chatWidth
+    const viewportW = Math.max(window.innerWidth, 1)
+    const startWidth = chatPanelEl
+      ? chatPanelEl.getBoundingClientRect().width
+      : (chatWidthPct / 100) * viewportW
 
     document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
@@ -122,9 +155,9 @@ function App(): React.JSX.Element {
     const onMouseMove = (moveEvent: MouseEvent): void => {
       if (!isResizingRef.current) return
       const delta = startX - moveEvent.clientX
-      const maxAllowed = window.innerWidth * 0.75
-      const newWidth = Math.round(Math.max(280, Math.min(maxAllowed, startWidth + delta)))
-      setChatWidth(newWidth)
+      const rawPct = ((startWidth + delta) / Math.max(window.innerWidth, 1)) * 100
+      const clampedPct = Math.round(Math.max(28, Math.min(65, rawPct)) * 10) / 10
+      setChatWidthPct(clampedPct)
     }
 
     const onMouseUp = (): void => {
@@ -135,9 +168,9 @@ function App(): React.JSX.Element {
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
       try {
-        setChatWidth((finalWidth) => {
-          localStorage.setItem('pva_chat_panel_width_custom', finalWidth.toString())
-          return finalWidth
+        setChatWidthPct((finalPct) => {
+          localStorage.setItem('pva_chat_panel_width_pct', finalPct.toString())
+          return finalPct
         })
       } catch {
         // ignore
@@ -151,10 +184,18 @@ function App(): React.JSX.Element {
   const [appStatus, appStore] = useAppState()
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
   const isCheckingRef = useRef(false)
+  const isMountedRef = useRef(true)
+  const isGeneratingRef = useRef(false)
+  const healthTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const startingStartTimeRef = useRef<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<(() => void) | null>(null)
   const retryCountRef = useRef(0)
+
+  useEffect(() => {
+    isGeneratingRef.current = isGenerating
+  }, [isGenerating])
 
   const scrollToBottom = (): void => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -300,73 +341,160 @@ function App(): React.JSX.Element {
     }
   }
 
-  const checkHealth = async (isManual = false): Promise<void> => {
+  const scheduleNextCheck = (
+    status: 'checking' | 'starting' | 'healthy' | 'unhealthy' | 'model_missing'
+  ): void => {
+    if (!isMountedRef.current) return
+    if (healthTimerRef.current) {
+      clearTimeout(healthTimerRef.current)
+      healthTimerRef.current = null
+    }
+
+    let delay: number
+    if (status === 'checking') {
+      delay = HEALTH_POLL_INITIAL_MS
+    } else if (status === 'starting') {
+      delay = HEALTH_POLL_STARTING_MS
+    } else if (status === 'unhealthy') {
+      if (retryCountRef.current < MAX_FAST_RETRIES) {
+        delay = HEALTH_POLL_UNHEALTHY_FAST_MS
+        retryCountRef.current += 1
+      } else {
+        delay = HEALTH_POLL_UNHEALTHY_SLOW_MS
+      }
+    } else if (status === 'model_missing') {
+      delay = HEALTH_POLL_MODEL_MISSING_MS
+    } else {
+      retryCountRef.current = 0
+      delay = HEALTH_POLL_HEALTHY_MS
+    }
+
+    healthTimerRef.current = setTimeout(() => {
+      void checkHealth(false)
+    }, delay)
+  }
+
+  const applyHealthResult = (res: ChatHealthResponse): void => {
+    if (!isMountedRef.current) return
+
+    if (res.ok) {
+      startingStartTimeRef.current = null
+      retryCountRef.current = 0
+      setHealthStatus('healthy')
+      const currentStatus = appStore.getSnapshot()
+      if (
+        currentStatus.state === 'Error' ||
+        (currentStatus.state === 'Processing' && !isGeneratingRef.current)
+      ) {
+        appStore.setIdle()
+      }
+      scheduleNextCheck('healthy')
+      return
+    }
+
+    if (res.status === 'starting') {
+      if (startingStartTimeRef.current === null) {
+        startingStartTimeRef.current = Date.now()
+      }
+      const elapsedMs = Date.now() - startingStartTimeRef.current
+      if (elapsedMs >= STARTING_TIMEOUT_MS) {
+        startingStartTimeRef.current = null
+        setHealthStatus('unhealthy')
+        if (!isGeneratingRef.current) {
+          appStore.setError('MODEL_UNAVAILABLE', 'Không thể tự động kết nối Ollama')
+        }
+        scheduleNextCheck('unhealthy')
+        return
+      }
+
+      setHealthStatus('starting')
+      if (!isGeneratingRef.current) {
+        appStore.setProcessing('Đang khởi chạy Ollama...')
+      }
+      scheduleNextCheck('starting')
+      return
+    }
+
+    startingStartTimeRef.current = null
+    if (res.status === 'model_missing') {
+      setHealthStatus('model_missing')
+      if (!isGeneratingRef.current) {
+        appStore.setError('MODEL_UNAVAILABLE', 'Chưa có mô hình AI trong Ollama')
+      }
+      scheduleNextCheck('model_missing')
+    } else {
+      setHealthStatus('unhealthy')
+      if (!isGeneratingRef.current) {
+        appStore.setError('MODEL_UNAVAILABLE', 'Đã mất kết nối với Ollama')
+      }
+      scheduleNextCheck('unhealthy')
+    }
+  }
+
+  async function checkHealth(isManual = false): Promise<void> {
     if (isManual) {
       retryCountRef.current = 0
     }
 
-    if (isCheckingRef.current) return
+    if (isCheckingRef.current) {
+      if (isManual) {
+        scheduleNextCheck('checking')
+      }
+      return
+    }
     isCheckingRef.current = true
 
     try {
       if (window.api?.chat?.health) {
         const res = await window.api.chat.health()
-        if (res.ok) {
-          setHealthStatus('healthy')
-          retryCountRef.current = 0
-          if (appStatus.state === 'Error') {
-            appStore.setIdle()
-          }
-        } else if (res.status === 'starting') {
-          setHealthStatus('starting')
-          appStore.setProcessing('Đang khởi chạy Ollama...')
-        } else if (res.status === 'model_missing') {
-          setHealthStatus('model_missing')
-          appStore.setError('MODEL_UNAVAILABLE', 'Chưa có mô hình AI trong Ollama')
-        } else {
-          setHealthStatus('unhealthy')
-          appStore.setError('MODEL_UNAVAILABLE', 'Đã mất kết nối với Ollama')
-        }
+        applyHealthResult(res)
+      } else {
+        scheduleNextCheck('healthy')
       }
     } catch {
-      setHealthStatus('unhealthy')
-      appStore.setError('MODEL_UNAVAILABLE', 'Đã mất kết nối với Ollama')
+      startingStartTimeRef.current = null
+      if (isMountedRef.current) {
+        setHealthStatus('unhealthy')
+        if (!isGeneratingRef.current) {
+          appStore.setError('MODEL_UNAVAILABLE', 'Đã mất kết nối với Ollama')
+        }
+        scheduleNextCheck('unhealthy')
+      }
     } finally {
       isCheckingRef.current = false
     }
   }
 
-  // Adaptive Polling: Lần đầu chạy sau 100ms; khi offline/starting thử lại nhanh (2.5s) tối đa 5 lần (~12.5s); sau đó giãn ra 30s
+  // Recursive Scheduled Polling + IPC Event Push từ Main Process để tránh bị đứng ở 'starting'
   useEffect(() => {
-    let delay: number
+    isMountedRef.current = true
+    scheduleNextCheck('checking')
 
-    if (healthStatus === 'checking') {
-      delay = 100
-    } else if (healthStatus === 'starting' || healthStatus === 'unhealthy') {
-      if (retryCountRef.current < 5) {
-        delay = 2500
-        retryCountRef.current += 1
-      } else {
-        delay = 30000
+    const unsubscribeModelStatus = window.api?.chat?.onModelStatus
+      ? window.api.chat.onModelStatus((statusPayload) => {
+          applyHealthResult(statusPayload)
+        })
+      : undefined
+
+    return (): void => {
+      isMountedRef.current = false
+      if (healthTimerRef.current) {
+        clearTimeout(healthTimerRef.current)
+        healthTimerRef.current = null
       }
-    } else {
-      retryCountRef.current = 0
-      delay = 30000
+      unsubscribeModelStatus?.()
     }
-
-    const timer = setTimeout(() => {
-      void checkHealth(false)
-    }, delay)
-
-    return (): void => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [healthStatus])
+  }, [])
 
   const lastUserMessageTextRef = useRef<string>('')
 
   const handleReconnectOllama = async (): Promise<void> => {
+    startingStartTimeRef.current = null
+    retryCountRef.current = 0
     appStore.setProcessing('Đang kết nối lại tới Ollama...')
     setHealthStatus('starting')
+    scheduleNextCheck('starting')
     try {
       if (window.api?.chat?.startModel) {
         await window.api.chat.startModel()
@@ -384,8 +512,10 @@ function App(): React.JSX.Element {
       if (userMsgs.length > 0) {
         const lastContent = userMsgs[userMsgs.length - 1].content
         if (healthStatus === 'unhealthy' && window.api?.chat?.startModel) {
+          startingStartTimeRef.current = null
           appStore.setProcessing('Đang kết nối lại...')
           setHealthStatus('starting')
+          scheduleNextCheck('starting')
           await window.api.chat.startModel()
           await checkHealth(true)
         }
@@ -395,8 +525,10 @@ function App(): React.JSX.Element {
     }
 
     if (healthStatus === 'unhealthy' && window.api?.chat?.startModel) {
+      startingStartTimeRef.current = null
       appStore.setProcessing('Đang kết nối lại...')
       setHealthStatus('starting')
+      scheduleNextCheck('starting')
       await window.api.chat.startModel()
       await checkHealth(true)
     }
@@ -518,7 +650,7 @@ function App(): React.JSX.Element {
     if (!contentOverride) {
       setInput('')
       if (textareaRef.current) {
-        textareaRef.current.style.height = '26px'
+        textareaRef.current.style.height = 'auto'
       }
     }
     setIsGenerating(true)
@@ -564,7 +696,10 @@ function App(): React.JSX.Element {
             })
           )
           setIsGenerating(false)
+          startingStartTimeRef.current = null
+          setHealthStatus('healthy')
           appStore.setIdle()
+          scheduleNextCheck('healthy')
           abortRef.current = null
           setTimeout(() => textareaRef.current?.focus(), 50)
         },
@@ -722,10 +857,10 @@ function App(): React.JSX.Element {
         <div className="resizer-handle-line" />
       </div>
 
-      {/* Cột phải: Khung trò chuyện đầy đủ (Chiều rộng thu phóng theo chatWidth) */}
+      {/* Cột phải: Khung trò chuyện đầy đủ (Chiều rộng thu phóng theo % viewport) */}
       <section
         className="chat-panel"
-        style={{ width: `${chatWidth}px`, flex: '0 0 auto' }}
+        style={{ width: `clamp(280px, ${chatWidthPct}vw, 70vw)`, flex: '0 0 auto' }}
         aria-label="Khu vực trò chuyện"
       >
         {/* Header (Đã tinh giản: Bỏ StatusBar trùng lặp, bỏ persistence pill trên header) */}
@@ -752,13 +887,22 @@ function App(): React.JSX.Element {
               <span className="brand-name">Asada Sinon</span>
               <span
                 className={`brand-subtitle ${appStatus.state === 'Error' ? 'is-error-clickable' : ''}`}
+                style={
+                  healthStatus === 'starting' && !isGenerating ? { cursor: 'pointer' } : undefined
+                }
                 onClick={() => {
                   if (appStatus.state === 'Error') {
                     void handleReconnectOllama()
+                  } else if (healthStatus === 'starting' && !isGenerating) {
+                    void checkHealth(true)
                   }
                 }}
                 title={
-                  appStatus.state === 'Error' ? 'Nhấp để kết nối lại với Ollama' : headerSubtitle
+                  appStatus.state === 'Error'
+                    ? 'Nhấp để kết nối lại với Ollama'
+                    : healthStatus === 'starting' && !isGenerating
+                      ? 'Nhấp để kiểm tra lại trạng thái Ollama ngay'
+                      : headerSubtitle
                 }
               >
                 {headerSubtitle}
@@ -767,6 +911,42 @@ function App(): React.JSX.Element {
           </div>
 
           <div className="header-meta">
+            {/* Nút mở/đóng Công việc & Nhắc nhở (FR-04 / FR-05) */}
+            <button
+              type="button"
+              className={`tasks-toggle-btn ${isTasksOpen ? 'is-open' : ''}`}
+              onClick={() => {
+                setIsHistoryOpen(false)
+                setIsTasksOpen((prev) => !prev)
+              }}
+              title="Công việc & Nhắc nhở"
+              aria-label="Mở công việc và nhắc nhở"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+              {(remindersState.missedCount > 0 || tasksState.openCount > 0) && (
+                <span
+                  className={`tasks-toggle-badge ${remindersState.missedCount > 0 ? 'has-missed' : ''}`}
+                >
+                  {remindersState.missedCount > 0
+                    ? remindersState.missedCount
+                    : tasksState.openCount}
+                </span>
+              )}
+            </button>
+
             {/* Nút Cài đặt (Settings) phong cách Apple */}
             <button
               type="button"
@@ -797,11 +977,28 @@ function App(): React.JSX.Element {
             <button
               type="button"
               className={`history-drawer-toggle-btn ${isHistoryOpen ? 'is-open' : ''}`}
-              onClick={() => setIsHistoryOpen((prev) => !prev)}
+              onClick={() => {
+                setIsTasksOpen(false)
+                setIsHistoryOpen((prev) => !prev)
+              }}
               title={isHistoryOpen ? 'Đóng lịch sử trò chuyện' : 'Mở lịch sử trò chuyện'}
               aria-label={isHistoryOpen ? 'Đóng lịch sử' : 'Mở lịch sử'}
             >
-              <span className="drawer-icon-symbol">{isHistoryOpen ? '|>' : '<|'}</span>
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" aria-hidden="true">
+                <rect
+                  x="3"
+                  y="4"
+                  width="18"
+                  height="16"
+                  rx="3.5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M10.5 4H17.5A3.5 3.5 0 0 1 21 7.5V16.5A3.5 3.5 0 0 1 17.5 20H10.5V4Z"
+                  fill="currentColor"
+                />
+              </svg>
             </button>
           </div>
         </header>
@@ -1032,7 +1229,20 @@ function App(): React.JSX.Element {
                     title="Thao tác nhanh"
                     aria-label="Thao tác nhanh"
                   >
-                    <span className="action-symbol">＋</span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="15"
+                      height="15"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
                   </button>
 
                   {/* Nút Drop-up Chế độ hội thoại (Căn trái, chuẩn vector SVG không icon 3D) */}
@@ -1260,6 +1470,24 @@ function App(): React.JSX.Element {
         onSelectConversation={(id) => void handleSelectConversation(id)}
         onNewConversation={() => void handleNewConversation()}
         onDeleteConversation={(id) => handleDeleteConversation(id)}
+      />
+
+      {/* Tasks & Reminders Drawer (Gộp 1 màn + Lặp lại + Liquid Glass Controls) */}
+      <TasksDrawer
+        isOpen={isTasksOpen}
+        onClose={() => setIsTasksOpen(false)}
+        tasksState={tasksState}
+        remindersState={remindersState}
+      />
+
+      {/* Thông báo nhắc nhở trong ứng dụng dạng xếp chồng (FR-05) */}
+      <ReminderToast
+        toasts={remindersState.toasts}
+        onDismiss={remindersState.dismissToast}
+        onOpenReminders={() => {
+          setIsHistoryOpen(false)
+          setIsTasksOpen(true)
+        }}
       />
     </div>
   )

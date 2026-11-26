@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { TASK_STATUSES, isValidTaskStatus, TaskStatus } from './Task'
+import { TASK_STATUSES, isValidTaskStatus } from './Task'
+import type { Task, TaskStatus } from './Task'
 
 describe('Task Model & TaskStatus Constraints', () => {
   it('định nghĩa tập trạng thái hợp lệ đồng bộ với database (open, done)', () => {
@@ -21,10 +22,21 @@ describe('Task Model & TaskStatus Constraints', () => {
     expect(isValidTaskStatus(123)).toBe(false)
   })
 
-  it('hỗ trợ gán kiểu TaskStatus hợp lệ', () => {
+  it('hỗ trợ gán kiểu Task và TaskStatus đồng bộ với schema SQLite', () => {
     const statusOpen: TaskStatus = 'open'
     const statusDone: TaskStatus = 'done'
+    const sampleTask: Task = {
+      id: 1,
+      title: 'Hoàn thành báo cáo',
+      dueAt: '2026-11-25T10:00:00.000Z',
+      status: statusOpen,
+      recurrence: 'daily',
+      createdAt: '2026-11-22T09:00:00.000Z',
+      updatedAt: '2026-11-22T09:00:00.000Z'
+    }
     expect(statusOpen).toBe('open')
     expect(statusDone).toBe('done')
+    expect(sampleTask.id).toBe(1)
+    expect(sampleTask.dueAt).toBe('2026-11-25T10:00:00.000Z')
   })
 })

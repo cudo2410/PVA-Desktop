@@ -6,49 +6,139 @@ interface CharacterStageProps {
   status: AppStatusInfo
 }
 
-export const CharacterStage: React.FC<CharacterStageProps> = ({ status }) => {
+const CharacterStageInner: React.FC<CharacterStageProps> = ({ status }) => {
   const videoRefA = useRef<HTMLVideoElement | null>(null)
   const videoRefB = useRef<HTMLVideoElement | null>(null)
   const [activeVideo, setActiveVideo] = useState<'A' | 'B'>('A')
+  const [isReady, setIsReady] = useState<boolean>(false)
+  const activeVideoRef = useRef<'A' | 'B'>('A')
   const [isCrossfading, setIsCrossfading] = useState<boolean>(false)
   const crossfadeTriggeredRef = useRef<boolean>(false)
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Hiệu ứng chuyển tiếp kết hợp phong cách CapCut (Zoom nhẹ + Gaussian Blur Dissolve + Hologram Light Flash)
+  // Chạy 1 lần khi mount: chỉ giữ 1 bộ giải mã chạy ở trạng thái ổn định, tự phục hồi khi mở lại từ khay hệ thống
   useEffect(() => {
     const vidA = videoRefA.current
     const vidB = videoRefB.current
     if (!vidA || !vidB) return
 
-    vidA.currentTime = 0
-    vidB.currentTime = 0
-    void vidA.play().catch(() => {})
+    const ensurePlaying = (video: HTMLVideoElement): void => {
+      if (document.visibilityState === 'hidden') return
+      if (video.error || video.readyState === 0) {
+        video.load()
+      }
+      if (video.paused || video.ended) {
+        void video.play().catch(() => {})
+      }
+    }
+
+    const ensureActivePlaying = (): void => {
+      const current = activeVideoRef.current === 'A' ? vidA : vidB
+      ensurePlaying(current)
+    }
+
+    // Tránh reset currentTime = 0 nếu vidA đã đang chạy (chống AbortError trong React StrictMode)
+    if (vidA.paused) {
+      void vidA.play().catch(() => {})
+    }
 
     const checkTime = (): void => {
-      const current = activeVideo === 'A' ? vidA : vidB
-      const next = activeVideo === 'A' ? vidB : vidA
+      if (document.visibilityState === 'hidden') return
 
-      if (!current.duration || isNaN(current.duration)) return
+      const currentKey = activeVideoRef.current
+      const current = currentKey === 'A' ? vidA : vidB
+      const next = currentKey === 'A' ? vidB : vidA
+
+      if (current.paused || current.ended) {
+        ensurePlaying(current)
+      }
+
+      if (!current.duration || Number.isNaN(current.duration)) return
 
       const timeLeft = current.duration - current.currentTime
-      // Khi thời gian còn lại <= 0.55s, kích hoạt chuyển tiếp kết hợp CapCut giữa 2 video
+      // Khi thời gian còn lại <= 0.55s, chuyển mượt sang video dự phòng rồi dừng video cũ sau crossfade
       if (timeLeft <= 0.55 && !crossfadeTriggeredRef.current) {
         crossfadeTriggeredRef.current = true
         setIsCrossfading(true)
         next.currentTime = 0
         void next.play().catch(() => {})
-        setActiveVideo(activeVideo === 'A' ? 'B' : 'A')
 
-        setTimeout(() => {
+        const prevVideo = current
+        const nextKey: 'A' | 'B' = currentKey === 'A' ? 'B' : 'A'
+        activeVideoRef.current = nextKey
+        setActiveVideo(nextKey)
+
+        if (flashTimeoutRef.current) {
+          clearTimeout(flashTimeoutRef.current)
+        }
+        flashTimeoutRef.current = setTimeout(() => {
           setIsCrossfading(false)
-        }, 550)
+          // Dừng video đã ẩn để luôn chỉ chạy 1 bộ giải mã phần cứng ở trạng thái ổn định
+          if (activeVideoRef.current !== currentKey && !prevVideo.paused) {
+            prevVideo.pause()
+          }
+        }, 580)
       } else if (timeLeft > 1.0) {
         crossfadeTriggeredRef.current = false
       }
     }
 
-    const timer = setInterval(checkTime, 100)
-    return () => clearInterval(timer)
-  }, [activeVideo])
+    const handleVisibilityOrFocus = (): void => {
+      if (document.visibilityState === 'hidden') {
+        if (!vidA.paused) {
+          vidA.pause()
+        }
+        if (!vidB.paused) {
+          vidB.pause()
+        }
+        return
+      }
+      if (document.visibilityState === 'visible') {
+        ensureActivePlaying()
+      }
+    }
+
+    const handleVideoRecover = (video: HTMLVideoElement, key: 'A' | 'B'): (() => void) => {
+      return () => {
+        if (activeVideoRef.current === key) {
+          ensurePlaying(video)
+        }
+      }
+    }
+
+    const recoverA = handleVideoRecover(vidA, 'A')
+    const recoverB = handleVideoRecover(vidB, 'B')
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus)
+    window.addEventListener('focus', handleVisibilityOrFocus)
+    vidA.addEventListener('canplay', recoverA)
+    vidA.addEventListener('stalled', recoverA)
+    vidA.addEventListener('error', recoverA)
+    vidA.addEventListener('ended', recoverA)
+    vidB.addEventListener('canplay', recoverB)
+    vidB.addEventListener('stalled', recoverB)
+    vidB.addEventListener('error', recoverB)
+    vidB.addEventListener('ended', recoverB)
+
+    const timer = setInterval(checkTime, 120)
+    return (): void => {
+      clearInterval(timer)
+      if (flashTimeoutRef.current) {
+        clearTimeout(flashTimeoutRef.current)
+        flashTimeoutRef.current = null
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus)
+      window.removeEventListener('focus', handleVisibilityOrFocus)
+      vidA.removeEventListener('canplay', recoverA)
+      vidA.removeEventListener('stalled', recoverA)
+      vidA.removeEventListener('error', recoverA)
+      vidA.removeEventListener('ended', recoverA)
+      vidB.removeEventListener('canplay', recoverB)
+      vidB.removeEventListener('stalled', recoverB)
+      vidB.removeEventListener('error', recoverB)
+      vidB.removeEventListener('ended', recoverB)
+    }
+  }, [])
 
   const isInteracting = status.state === 'Listening' || status.state === 'Speaking'
 
@@ -60,10 +150,13 @@ export const CharacterStage: React.FC<CharacterStageProps> = ({ status }) => {
       <video
         ref={videoRefA}
         src={sinonVideo}
+        autoPlay
         muted
         playsInline
         preload="auto"
-        className={`character-video video-a ${activeVideo === 'A' ? 'video-active' : 'video-inactive'}`}
+        onLoadedData={() => setIsReady(true)}
+        onPlaying={() => setIsReady(true)}
+        className={`character-video video-a ${isReady && activeVideo === 'A' ? 'video-active' : 'video-inactive'}`}
       />
       <video
         ref={videoRefB}
@@ -71,9 +164,9 @@ export const CharacterStage: React.FC<CharacterStageProps> = ({ status }) => {
         muted
         playsInline
         preload="auto"
-        className={`character-video video-b ${activeVideo === 'B' ? 'video-active' : 'video-inactive'}`}
+        className={`character-video video-b ${isReady && activeVideo === 'B' ? 'video-active' : 'video-inactive'}`}
       />
-      {/* Lớp chớp sáng hòa trộn Hologram CapCut khi chuyển giao vòng lặp */}
+      {/* Lớp chớp sáng hòa trộn nhẹ khi chuyển giao vòng lặp */}
       <div className={`stage-capcut-flash ${isCrossfading ? 'flash-active' : ''}`} />
       {/* Lớp mặt nạ Gradient chuyển tiếp mềm xuống nền tối */}
       <div className="stage-vignette" />
@@ -82,3 +175,8 @@ export const CharacterStage: React.FC<CharacterStageProps> = ({ status }) => {
     </div>
   )
 }
+
+export const CharacterStage = React.memo(
+  CharacterStageInner,
+  (prev, next) => prev.status.state === next.status.state
+)

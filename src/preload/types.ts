@@ -1,3 +1,7 @@
+import type { CreateTaskInput, Task, TaskListOptions, UpdateTaskInput } from '../core/models/Task'
+import type { CreateReminderInput, Reminder, ReminderStateFilter } from '../core/models/Reminder'
+import type { NotificationPayload } from '../core/ports/Notifier'
+
 export type StandardErrorCode =
   'MODEL_UNAVAILABLE' | 'MODEL_TIMEOUT' | 'MODEL_BAD_RESPONSE' | 'DB_UNAVAILABLE'
 
@@ -69,11 +73,47 @@ export interface ConversationActionResponse {
   error?: string
 }
 
+export interface TaskListResponse {
+  success: boolean
+  tasks?: Task[]
+  code?: string
+  error?: string
+}
+
+export interface TaskActionResponse {
+  success: boolean
+  task?: Task
+  code?: string
+  error?: string
+}
+
+export interface ReminderListResponse {
+  success: boolean
+  reminders?: Reminder[]
+  code?: string
+  error?: string
+}
+
+export interface ReminderActionResponse {
+  success: boolean
+  reminder?: Reminder
+  code?: string
+  error?: string
+}
+
+export interface MiniWidgetBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 export interface PvaApi {
   chat: {
     send(content: string): Promise<ChatSendResponse>
     health(): Promise<ChatHealthResponse>
     startModel?(): Promise<{ success: boolean; error?: string }>
+    onModelStatus?(callback: (status: ChatHealthResponse) => void): () => void
     stream(content: string, callbacks: ChatStreamCallbacks): () => void
     loadHistory(): Promise<ChatHistoryResponse>
     getPersistence(): Promise<ChatPersistenceResponse>
@@ -84,5 +124,34 @@ export interface PvaApi {
     switchConversation(conversationId: number): Promise<ConversationDetailResponse>
     createConversation(title?: string): Promise<ConversationActionResponse>
     deleteConversation(conversationId: number): Promise<{ success: boolean; error?: string }>
+  }
+  tasks: {
+    list(options?: TaskListOptions): Promise<TaskListResponse>
+    create(input: CreateTaskInput): Promise<TaskActionResponse>
+    update(id: number, input: UpdateTaskInput): Promise<TaskActionResponse>
+    toggle(id: number): Promise<TaskActionResponse>
+    delete(id: number): Promise<{ success: boolean; code?: string; error?: string }>
+    onUpdated(callback: () => void): () => void
+  }
+  reminders: {
+    list(state?: ReminderStateFilter): Promise<ReminderListResponse>
+    create(input: CreateReminderInput): Promise<ReminderActionResponse>
+    cancel(id: number): Promise<ReminderActionResponse>
+    delete(id: number): Promise<{ success: boolean; code?: string; error?: string }>
+    onFired(callback: (payload: NotificationPayload) => void): () => void
+    onUpdated(callback: () => void): () => void
+    onPlaySound(callback: () => void): () => void
+    onOpenDrawer(callback: () => void): () => void
+    onOverlayToast(callback: (payload: NotificationPayload) => void): () => void
+    openFromToast(openTasksDrawer?: boolean): void
+    notifyOverlayEmpty(): void
+    setOverlayMouseIgnore(ignore: boolean): void
+  }
+  window: {
+    restoreFromMini(): void
+    hideMiniToTray(): void
+    getMiniBounds(): Promise<MiniWidgetBounds | null>
+    resizeMini(bounds: MiniWidgetBounds): void
+    onMiniVisibility(callback: (visible: boolean) => void): () => void
   }
 }

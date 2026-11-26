@@ -357,3 +357,78 @@ Chi tiết bảng số đo đầy đủ được lưu tại `docs/G1_Report.md`.
 ### 5.3. Bổ sung Hợp đồng Port giọng nói (Mục 8.2 SRS v2.1)
 - **`src/core/ports/SpeechToText.ts`**: Port trừu tượng cho nhận dạng giọng nói (`health()`, `transcribeFile()`, `transcribeBuffer()`), chuẩn hóa mã lỗi `SttErrorCode`.
 - **`src/core/ports/TextToSpeech.ts`**: Port trừu tượng cho tổng hợp tiếng nói (`health()`, `listVoices()`, `synthesize()`, `stop()`), chuẩn hóa mã lỗi `TtsErrorCode`.
+
+
+---
+
+## 6. Triển khai Tuần 4: Công việc (FR-04), Nhắc nhở (FR-05), Bộ định tuyến (FR-16), Khay hệ thống & Đóng gói lần 1
+
+_Ngày cập nhật đồng bộ: 22/11/2026_
+
+### 6.1. Quản lý Công việc (FR-04) & Chuẩn hóa Model `Task`
+- **Chuẩn hóa `src/core/models/Task.ts`**: Đồng bộ 100% với bảng `tasks` trong `migrations/001_initial_schema.sql` (`id: number`, `title: string`, `dueAt: string | null`, `status: 'open' | 'done'`, `createdAt: string`, `updatedAt: string`), kèm `TaskStatusFilter` (`'all' | 'open' | 'done'`) và `TaskSortBy` (`'due_asc' | 'due_desc' | 'created_desc'`).
+- **Port & Service**: `TaskRepository` (`src/core/ports/TaskRepository.ts`), `TaskService` (`src/core/services/TaskService.ts`) kiểm tra tiêu đề không rỗng (≤ 200 ký tự), chuẩn hóa thời hạn ISO-8601 UTC, lọc trạng thái và sắp xếp theo hạn (đẩy việc không có hạn xuống cuối).
+- **Adapter SQLite**: `SqliteTaskRepository` (`src/adapters/db/SqliteTaskRepository.ts`) thay thế đề xuất `MySqlTaskRepo` cũ, đồng bộ kiến trúc SQLite embedded (`better-sqlite3`).
+- **Giao diện FR-04**: `TasksDrawer` (`src/ui/src/components/TasksDrawer.tsx`) phong cách Apple Liquid Glass với thêm, sửa inline, xóa có xác nhận (`ConfirmModal`), đánh dấu hoàn thành, lọc theo trạng thái và sắp xếp theo hạn.
+
+### 6.2. Nhắc nhở (FR-05), Khay hệ thống & Thông báo Windows (R-05)
+- **Model & Ports**: `Reminder` (`src/core/models/Reminder.ts`), `ReminderRepository` (`src/core/ports/ReminderRepository.ts`), `Notifier` (`src/core/ports/Notifier.ts`), và **điểm mở rộng GĐ2 `Scheduler`** (`src/core/ports/Scheduler.ts` — sẵn sàng thay thế bằng Windows Task Scheduler cho `FR-05B`).
+- **`InAppScheduler` (`src/adapters/scheduler/InAppScheduler.ts`)**: Hẹn giờ trong ứng dụng bằng `setTimeout` có chia chặng khi vượt giới hạn 32-bit (`2_147_483_647 ms`).
+- **`ReminderService` (`src/core/services/ReminderService.ts`)**: Từ chối thời điểm ở quá khứ; `restoreOnStartup()` tự động nạp lại các nhắc `scheduled` còn hạn và đánh dấu `missed` (*"Đã lỡ"*) cho các nhắc quá hạn khi ứng dụng tắt.
+- **Khay hệ thống & Thông báo Windows**:
+  - `TrayManager` (`src/adapters/os/TrayManager.ts`): Icon khay hệ thống với menu *Mở PVA / Thoát PVA*; đóng cửa sổ sẽ thu xuống khay để lịch nhắc tiếp tục hoạt động; `app.requestSingleInstanceLock()` tránh mở trùng tiến trình.
+  - `MiniWidgetWindow` (`src/adapters/os/MiniWidgetWindow.ts`) + `MiniWidgetApp` (`src/ui/src/components/MiniWidgetApp.tsx`): Cửa sổ thu nhỏ nổi kiểu Microsoft Teams (`300×196px` mặc định với vùng đệm glow `22px`, cho phép kéo chỉnh kích thước trực tiếp từ 8 cạnh/góc bám sát viền khung trong phạm vi `220×148` đến `680×460` qua IPC `mini-widget:get-bounds` / `mini-widget:resize`, `#mini-widget`, luôn nổi, không hiện icon thừa trên Taskbar), hiển thị Asada Sinon với tên và nút điều khiển frameless co giãn theo `%` có giới hạn tối đa (`window.api.window.restoreFromMini`, `window.api.window.hideMiniToTray`).
+  - `WindowsNotifier` (`src/adapters/os/WindowsNotifier.ts`) + `ToastOverlayWindow` (`src/adapters/os/ToastOverlayWindow.ts`): Phân luồng thông báo thông minh theo 3 trạng thái cửa sổ (tránh bắn trùng):
+    1. Cửa sổ chính đang mở (`visible`): chỉ hiện hàng đợi `ReminderToast` kính trong suốt mờ trong app (có avatar Asada Sinon, xếp chồng đẩy thẻ cũ lên trên, tự đóng sau 8 giây, dừng khi hover) + âm thanh chuông pha lê tùy chỉnh (`notificationSound.ts`, Web Audio API).
+    2. Thu nhỏ `_` (hiện `MiniWidgetWindow`): chỉ hiện cửa sổ nổi Desktop trong suốt (`#toast-overlay`, luôn nổi góc dưới-phải, tự nâng `bottomOffset` nằm phía trên Mini Widget, không cướp focus, xuyên chuột vùng trống) + âm thanh chuông tùy chỉnh.
+    3. Đóng `✕` (trên cửa sổ chính hoặc trên Mini Widget) để chạy ngầm hoàn toàn dưới System Tray (`hidden`): gửi Windows Notification gốc (tự resize `resources/ava.jpg` sang PNG ARGB `64×64` cho Win32 `displayBalloon` và `128×128` cho `Notification` để tránh giới hạn `HICON`, tự lưu trong Trung tâm thông báo **Win + N**) với `silent: true` kèm phát âm thanh chuông tùy chỉnh của PVA (`backgroundThrottling: false` trên `mainWindow` kết hợp tự tạm dừng `<video>` khi `visibilityState === 'hidden'`).
+  - Thống nhất `AppUserModelId = 'com.pva.desktop'` giữa `src/main/index.ts` (`app.setAppUserModelId`) và `electron-builder.yml` (`appId: com.pva.desktop`).
+  - Giao diện Tab Nhắc nhở ghi rõ: *"Chỉ nhắc khi PVA đang chạy (kể cả khi cửa sổ đã ẩn xuống khay hệ thống)."*
+
+### 6.3. Bộ định tuyến lệnh `RuleRouter` v1 (FR-16) & Điểm mở rộng `IntentRouter`
+- **Điểm mở rộng GĐ2 `IntentRouter` (`src/core/ports/IntentRouter.ts`)**: Hợp đồng `route(input, now?) => Promise<RoutedIntent>`, sẵn sàng thay bằng LLM tool-calling ở Giai đoạn 2.
+- **`VietnameseTimeParser` (`src/core/services/VietnameseTimeParser.ts`)**: Hiểu giờ tương đối (*"sau 2 phút"*, *"15 phút nữa"*, *"sau 1 tiếng rưỡi"*, *"nửa tiếng nữa"*), giờ cụ thể (*"14h30"*, *"8 giờ rưỡi tối"*, *"8h kém 15"*, *"9 giờ sáng mai"*) và ngày (*"hôm nay"*, *"ngày mai"*, *"thứ sáu"*, *"ngày 25/11"*).
+- **`RuleRouter` v1 (`src/core/services/RuleRouter.ts`)**: Phân loại `create_task`, `set_reminder`, `open_target`, `ambiguous`, `chat`. Kiểm thử tự động đạt **32/32 (100% ≥ 90%)** trên bộ câu mẫu tiếng Việt.
+- **Tích hợp `ChatService`**: Tự động thực thi `create_task` / `set_reminder` qua chat và đồng bộ UI; lệnh `open_target` chỉ nhận diện và không thực thi trực tiếp cho tới khi nối `PermissionGuard` (Tuần 5).
+
+### 6.4. Bổ sung IPC Channels & Preload API
+- **Tasks IPC (`src/adapters/ipc/tasks.ipc.ts`)**: `tasks:list`, `tasks:create`, `tasks:update`, `tasks:toggle`, `tasks:delete`, event `tasks:updated`.
+- **Reminders IPC (`src/adapters/ipc/reminders.ipc.ts`)**: `reminders:list`, `reminders:create`, `reminders:cancel`, `reminders:delete`, events `reminders:fired`, `reminders:updated`.
+- **Preload (`window.api.tasks.*`, `window.api.reminders.*`)**: Định kiểu tập trung tại `src/preload/types.ts`.
+
+### 6.5. Đóng gói thử lần 1 (`electron-builder`)
+- Cập nhật `electron-builder.yml`: `appId: com.pva.desktop`, `productName: PVA`, `win.executableName: PVA`, thêm `migrations/**` vào `asarUnpack`, loại trừ `docs/**`, `g1-dataset/**`, `scripts/**`.
+- Cập nhật `migrator.ts` hỗ trợ đường dẫn `process.resourcesPath/app.asar.unpacked/migrations` khi chạy từ bản đóng gói `.exe`.
+
+
+### 6.6. Nâng cấp Giao diện gộp Công việc & Nhắc nhở, Chu kỳ lặp lại & Control Liquid Glass riêng
+- **Migration mới `migrations/002_add_recurrence.sql`**: Bổ sung cột `recurrence TEXT NOT NULL DEFAULT 'none' CHECK (recurrence IN ('none', 'daily', 'weekly', 'monthly'))` trên cả hai bảng `tasks` và `reminders` (vẫn giữ lưu trữ lịch sử tách riêng thành 2 bảng độc lập theo FR-04 & FR-05).
+- **Model & Logic lặp lại (`src/core/models/Recurrence.ts`)**:
+  - `TaskService.toggleTaskStatus()`: khi đánh dấu hoàn thành công việc có lặp lại, bản ghi cũ giữ trạng thái `'done'` trong lịch sử và tự sinh bản ghi `'open'` mới cho chu kỳ kế tiếp (hàng ngày / hàng tuần / hàng tháng, xử lý chuẩn cuối tháng 31/01 → 28/02).
+  - `ReminderService`: nhắc lặp khi bắn (`fired`) hoặc bị lỡ lúc app tắt (`missed`) đều giữ bản ghi lịch sử và tự tạo lịch mới cho chu kỳ tương lai gần nhất. Xóa công việc sẽ tự hủy nhắc `scheduled` đang gắn kèm.
+  - `RuleRouter`: nhận diện thêm mẫu câu *"hàng ngày / mỗi ngày"*, *"hàng tuần / mỗi tuần"*, *"hàng tháng / mỗi tháng"*.
+- **UI gộp 1 màn & Custom Apple Liquid Glass Controls (`src/ui/src/components/`)**:
+  - Loại bỏ hoàn toàn `<input type="datetime-local">` và `<select>` gốc của Windows.
+  - `GlassDateTimePicker.tsx`: popover lịch tháng tiếng Việt (`T2`–`CN`) bung sang bên trái ngoài vùng Drawer (`position: fixed`), cho phép nhập tay trực tiếp Giờ/Phút kèm nút `−`/`+`, nút *Xóa ngày giờ* chỉ đặt lại về thời điểm hiện tại mà không đóng popup, chọn nhanh `+2 phút / +15 phút / +1 giờ / Mai 09:00`, căn giữa nội dung trigger và animation vào/ra mượt mà (`transform`, `opacity`, `blur`).
+  - `GlassSelect.tsx`: dropdown kính mờ dùng portal `position: fixed` với animation đóng/mở mượt mà, tự căn vị trí trong viewport (dùng cho chọn chu kỳ lặp lại và sắp xếp).
+  - Toàn bộ layout & controls của cụm Công việc/Nhắc nhở dùng đơn vị responsive `%`, `vw`, `vh` kết hợp `clamp(min, preferred, max)`.
+  - `TasksDrawer.tsx`: gộp thành 1 màn hình thống nhất (1 form thêm có công tắc *"Nhắc hẹn"* lưu đồng thời sang 2 bảng `tasks` & `reminders`, thanh 2 dropdown Bộ lọc `Tất cả / Chưa xong / Đã xong / Có nhắc / Đã lỡ` căn trái và Sắp xếp căn phải, sửa inline dùng `GlassDateTimePicker` & `GlassSelect` kèm công tắc bật/tắt *"Nhắc hẹn"*).
+  - Cửa sổ chính (`src/main/index.ts`): kích thước khởi động mặc định `1360 × 800` (tự co vừa `workAreaSize`, `center: true`, nền `#060a0e`).
+
+### 6.7. Chuẩn hóa Hệ thống Giao diện Matte Gravity Glass (Hướng 1), Bo góc Đồng tâm & Responsive
+_Ngày cập nhật đồng bộ: 24/11/2026_
+
+- **Hợp nhất nguồn Design Tokens (`src/ui/src/assets/tokens.css`, `base.css`, `main.css`)**:
+  - Import trực tiếp `tokens.css` vào `main.css`, loại bỏ xung đột 3 hệ biến cũ và các biến undefined (`--liquid-accent`, `--color-text-*`), bổ sung `.loading-spinner` dùng chung.
+  - Dọn ~1.490 dòng CSS chết/trùng lặp trong `main.css`, chuẩn hóa fallback `@supports (backdrop-filter: blur(1px))` và `@media (prefers-reduced-motion: reduce)`.
+- **Bố cục khối nổi Gravity & Kính nhám tông xanh Emerald/Mint/Deep Teal**:
+  - Sân khấu nhân vật (`.character-stage-panel`), khung trò chuyện (`.chat-panel`), 2 ngăn kéo (`HistoryDrawer`, `TasksDrawer`), `ConfirmModal` và `ReminderToast` đồng nhất dạng khối kính nhám nổi (`rgba(14, 22, 29, 0.88)` + matte noise nhẹ, nền đá phiến `#060A0E`, viền hairline ánh mint).
+  - Loại bỏ toàn bộ màu xanh dương lạc tông ở chấm xử lý, con trỏ streaming và badge nhắc `Đang chờ` (chuyển sang Emerald Mint / Deep Teal).
+- **Hệ bo góc đồng tâm 4 tầng (`R_ngoài = R_trong + padding`)**:
+  - `--radius-panel: 16px` → `--radius-card: 12px` → `--radius-control: 8px` → `--radius-micro: 5px` (và `--radius-pill: 999px`).
+- **Tương phản WCAG AA/AAA & Căn giữa quang học**:
+  - Nâng chữ mờ lên `#94A3B8` (~6.3:1) và placeholder lên `#7C90A3` (~4.9:1); bổ sung focus-visible ring Emerald và trạng thái active nổi bật cho thẻ hội thoại.
+  - Đồng bộ tuyệt đối `--header-height`, `--header-pad-x`, `--drawer-width` và kích thước nút icon `34×34px` giữa Header chính và 2 Drawer; thay ký tự Unicode lệch tâm (`＋`, `•••`, emoji `💬`) bằng SVG vector căn giữa; cố định tỉ lệ switch `Nhắc hẹn` chống lệch theo tỉ lệ `vw/vh`.
+- **Responsive toàn diện**:
+  - Chuyển `chatWidth` trong `App.tsx` từ `px` cứng sang phần trăm viewport (`chatWidthPct`, mặc định `40%`, giới hạn `28%–65%`, áp `clamp(280px, ${chatWidthPct}vw, 70vw)`) với tương thích ngược `localStorage`.
+  - Hỗ trợ tự động chuyển bố cục xếp dọc ở `≤ 860px` và full-bleed không tràn ở `≤ 520px` / chiều cao `≤ 600px`.

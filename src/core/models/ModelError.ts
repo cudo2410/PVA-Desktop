@@ -30,6 +30,28 @@ export class DatabaseError extends AppError {
   }
 }
 
+export type DomainErrorCode = 'INVALID_INPUT' | 'NOT_FOUND'
+
+export class ValidationError extends Error {
+  public readonly code: DomainErrorCode = 'INVALID_INPUT'
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'ValidationError'
+    Object.setPrototypeOf(this, ValidationError.prototype)
+  }
+}
+
+export class NotFoundError extends Error {
+  public readonly code: DomainErrorCode = 'NOT_FOUND'
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'NotFoundError'
+    Object.setPrototypeOf(this, NotFoundError.prototype)
+  }
+}
+
 export const ERROR_MESSAGES: Record<StandardErrorCode, string> = {
   MODEL_UNAVAILABLE:
     'Không thể kết nối đến máy chủ Ollama. Vui lòng đảm bảo Ollama đang chạy trên máy tính của bạn.',

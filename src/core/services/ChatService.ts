@@ -5,6 +5,11 @@ import {
   ConversationRepository,
   StoredMessage
 } from '../ports/ConversationRepository'
+import type { IntentRouter } from '../ports/IntentRouter'
+import type { TaskService } from './TaskService'
+import type { ReminderService } from './ReminderService'
+import { RECURRENCE_LABELS } from '../models/Recurrence'
+import { ValidationError } from '../models/ModelError'
 
 export interface ChatServiceResponse {
   text: string
@@ -19,11 +24,33 @@ export const MAX_CONTEXT_MESSAGES = MAX_CONTEXT_TURNS * 2
 export interface ChatServiceOptions {
   systemPrompt?: string
   repository?: ConversationRepository
+  intentRouter?: IntentRouter
+  taskService?: TaskService
+  reminderService?: ReminderService
+  onTasksChanged?: () => void
+  onRemindersChanged?: () => void
+}
+
+function formatLocalDateTime(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleString('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
 }
 
 export class ChatService {
   private readonly chatModel: ChatModel
   private readonly repository?: ConversationRepository
+  private readonly intentRouter?: IntentRouter
+  private readonly taskService?: TaskService
+  private readonly reminderService?: ReminderService
+  private readonly onTasksChanged?: () => void
+  private readonly onRemindersChanged?: () => void
   private readonly systemPrompt: string
   private recentMessages: Message[] = []
   private activeConversationId?: number
@@ -32,6 +59,11 @@ export class ChatService {
   constructor(chatModel: ChatModel, options?: ChatServiceOptions) {
     this.chatModel = chatModel
     this.repository = options?.repository
+    this.intentRouter = options?.intentRouter
+    this.taskService = options?.taskService
+    this.reminderService = options?.reminderService
+    this.onTasksChanged = options?.onTasksChanged
+    this.onRemindersChanged = options?.onRemindersChanged
     this.systemPrompt = options?.systemPrompt || DEFAULT_SYSTEM_PROMPT
   }
 
@@ -254,6 +286,81 @@ export class ChatService {
     }
   }
 
+  private async tryHandleRoutedIntent(trimmed: string): Promise<string | null> {
+    if (!this.intentRouter) {
+      return null
+    }
+
+    const intent = await this.intentRouter.route(trimmed)
+
+    if (intent.type === 'chat') {
+      return null
+    }
+
+    if (intent.type === 'ambiguous') {
+      return intent.reason
+    }
+
+    if (intent.type === 'create_task') {
+      if (!this.taskService) {
+        return 'Tính năng quản lý công việc hiện chưa sẵn sàng (cơ sở dữ liệu chưa khả dụng).'
+      }
+      try {
+        const created = await this.taskService.createTask({
+          title: intent.title,
+          dueAt: intent.dueAt ?? null,
+          recurrence: intent.recurrence ?? 'none'
+        })
+        this.onTasksChanged?.()
+        const metaParts: string[] = []
+        if (created.dueAt) {
+          metaParts.push(`hạn: ${formatLocalDateTime(created.dueAt)}`)
+        }
+        if (created.recurrence !== 'none') {
+          metaParts.push(`lặp: ${RECURRENCE_LABELS[created.recurrence]}`)
+        }
+        const metaNote = metaParts.length > 0 ? ` (${metaParts.join(', ')})` : ''
+        return `Đã thêm công việc "${created.title}"${metaNote} vào danh sách công việc.`
+      } catch (err: unknown) {
+        if (err instanceof ValidationError) {
+          return err.message
+        }
+        throw err
+      }
+    }
+
+    if (intent.type === 'set_reminder') {
+      if (!this.reminderService) {
+        return 'Tính năng nhắc nhở hiện chưa sẵn sàng (cơ sở dữ liệu chưa khả dụng).'
+      }
+      try {
+        const created = await this.reminderService.createReminder({
+          text: intent.text,
+          remindAt: intent.remindAt,
+          recurrence: intent.recurrence ?? 'none'
+        })
+        this.onRemindersChanged?.()
+        const repeatNote =
+          created.recurrence !== 'none'
+            ? `, lặp ${RECURRENCE_LABELS[created.recurrence].toLowerCase()}`
+            : ''
+        return `Đã đặt nhắc nhở "${created.text}" vào lúc ${formatLocalDateTime(created.remindAt)}${repeatNote}. (Lưu ý: chỉ nhắc khi PVA đang chạy.)`
+      } catch (err: unknown) {
+        if (err instanceof ValidationError) {
+          return `${err.message} Bạn vui lòng chọn thời điểm ở tương lai nhé.`
+        }
+        throw err
+      }
+    }
+
+    if (intent.type === 'open_target') {
+      // FR-16: Không thực thi lệnh mở ứng dụng/website khi chưa đi qua PermissionGuard (triển khai ở Tuần 5)
+      return `Tôi đã nhận diện yêu cầu mở "${intent.target}". Để đảm bảo an toàn, thao tác mở ứng dụng/website sẽ chỉ thực thi qua danh sách cho phép (PermissionGuard & Allowlist).`
+    }
+
+    return null
+  }
+
   async send(content: string, opts?: Partial<ChatModelOptions>): Promise<ChatServiceResponse> {
     const trimmed = (content || '').trim()
     if (!trimmed) {
@@ -265,6 +372,16 @@ export class ChatService {
     const userMessage: Message = {
       role: 'user',
       content: trimmed
+    }
+
+    const routedReply = await this.tryHandleRoutedIntent(trimmed)
+    if (routedReply !== null) {
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: routedReply
+      }
+      await this.recordTurn(userMessage, assistantMessage)
+      return { text: routedReply }
     }
 
     const payload = this.buildContextPayload(userMessage)
@@ -295,6 +412,17 @@ export class ChatService {
     const userMessage: Message = {
       role: 'user',
       content: trimmed
+    }
+
+    const routedReply = await this.tryHandleRoutedIntent(trimmed)
+    if (routedReply !== null) {
+      onChunk(routedReply)
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: routedReply
+      }
+      await this.recordTurn(userMessage, assistantMessage)
+      return { text: routedReply }
     }
 
     const payload = this.buildContextPayload(userMessage)

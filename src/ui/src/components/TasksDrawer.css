@@ -1,0 +1,1058 @@
+/* Unified Tasks & Reminders Drawer — Matte Gravity Glass (Hướng 1)
+   Đồng bộ 100% khung nổi, header, bo góc đồng tâm và tương phản WCAG AA+ */
+
+@keyframes reminderToastEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes reminderToastExit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+}
+
+/* Floating Gravity Drawer Shell (Đồng nhất tuyệt đối với .history-drawer) */
+.tasks-drawer {
+  position: fixed;
+  top: var(--gravity-gap);
+  right: var(--gravity-gap);
+  bottom: var(--gravity-gap);
+  width: var(--drawer-width);
+  max-width: calc(100vw - 2 * var(--gravity-gap));
+  background-color: var(--glass-bg-solid);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-lg), var(--glass-highlight);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideInDrawerRight 240ms var(--ease-standard) forwards;
+  will-change: transform, opacity;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .tasks-drawer {
+    background-color: rgba(14, 22, 29, 0.94);
+    background-image: var(--matte-noise-image);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+}
+
+.tasks-drawer.closing {
+  animation: slideOutDrawerRight 190ms var(--ease-exit) forwards;
+}
+
+.drawer-summary-pill {
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent-border);
+  color: var(--color-accent-mint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.drawer-summary-pill.has-missed {
+  background: var(--color-danger-subtle);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+
+.tasks-panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* Form tạo công việc & nhắc nhở */
+.task-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.1vh, 10px);
+  padding: clamp(10px, 1.5vh, 14px) var(--drawer-pad-x);
+  border-bottom: 1px solid var(--glass-divider);
+}
+
+.task-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.task-form-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.glass-input {
+  width: 100%;
+  height: clamp(34px, 4.6vh, 38px);
+  padding: 0 12px 1.5px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-elevated);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: normal;
+  outline: none;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.glass-input::placeholder {
+  color: var(--color-text-placeholder);
+}
+
+.glass-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: var(--color-accent-ring);
+}
+
+.glass-input:focus-visible {
+  outline: none;
+}
+
+/* Custom Matte Switch "Nhắc hẹn" — 4 khoảng hở đối xứng tuyệt đối 3px ở mọi mức zoom/DPI */
+.glass-switch-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: none;
+  background: transparent;
+  padding: 4px 2px;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  color: var(--color-text-secondary);
+}
+
+.glass-switch-track {
+  --switch-w: 38px;
+  --switch-h: 22px;
+  --switch-pad: 3px;
+  --switch-knob: 16px;
+  position: relative;
+  width: var(--switch-w);
+  height: var(--switch-h);
+  border: none;
+  border-radius: var(--radius-pill);
+  background: rgba(186, 230, 214, 0.14);
+  box-shadow: inset 0 0 0 1px var(--glass-border-strong);
+  flex-shrink: 0;
+  transition:
+    background-color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+.glass-switch-knob {
+  position: absolute;
+  top: var(--switch-pad);
+  left: var(--switch-pad);
+  width: var(--switch-knob);
+  height: var(--switch-knob);
+  border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.32);
+  transform: translateX(0);
+  transition: transform var(--duration-normal) var(--ease-standard);
+}
+
+.glass-switch-row.is-on .glass-switch-track {
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 1px rgba(167, 243, 208, 0.35);
+}
+
+.glass-switch-row.is-on .glass-switch-knob {
+  transform: translateX(calc(var(--switch-w) - var(--switch-knob) - var(--switch-pad) * 2));
+}
+
+.glass-switch-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  transition: color var(--duration-fast) ease;
+}
+
+.glass-switch-row.is-on .glass-switch-label {
+  color: var(--color-text-primary);
+}
+
+/* Nút Primary Matte Emerald */
+.glass-primary-btn {
+  height: clamp(32px, 4.4vh, 36px);
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: 1px solid rgba(167, 243, 208, 0.28);
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+  transition:
+    filter var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.glass-primary-btn:hover {
+  filter: brightness(1.07);
+  transform: translateY(-1px);
+}
+
+.glass-primary-btn:active {
+  transform: scale(0.96);
+}
+
+.inline-form-error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-danger-text);
+  line-height: 1.4;
+}
+
+/* Thanh 2 Dropdown: Bộ lọc (trái) & Sắp xếp (phải) */
+.tasks-controls-bar {
+  display: flex;
+  align-items: center;
+  padding: clamp(8px, 1.2vh, 10px) var(--drawer-pad-x);
+  border-bottom: 1px solid var(--glass-divider);
+}
+
+.tasks-sort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Danh sách cuộn */
+.tasks-scroll-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px var(--drawer-pad-x) clamp(14px, 2.2vh, 22px);
+}
+
+.task-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Task Card — bo góc 12px (--radius-card) đồng tâm */
+.task-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: var(--radius-card);
+  background: var(--glass-bg-elevated);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) ease;
+}
+
+.task-card:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-strong);
+  transform: translateY(-1px);
+}
+
+.task-card.is-done {
+  opacity: 0.65;
+}
+
+.task-card.is-overdue,
+.task-card.state-missed {
+  border-color: var(--color-danger-border);
+}
+
+.task-check-btn {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(186, 230, 214, 0.34);
+  background: transparent;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.task-check-btn:hover {
+  border-color: var(--color-accent-mint);
+}
+
+.task-check-btn:active {
+  transform: scale(0.9);
+}
+
+.task-check-btn.checked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.standalone-bell-badge {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.standalone-bell-badge.state-scheduled {
+  background: var(--color-teal-subtle);
+  color: var(--color-teal-text);
+}
+
+.standalone-bell-badge.state-missed {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+}
+
+.standalone-bell-badge.state-fired {
+  background: var(--color-success-subtle);
+  color: var(--color-success-text);
+}
+
+.standalone-bell-badge.state-cancelled {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--color-text-muted);
+}
+
+.task-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  line-height: 1.42;
+  word-break: break-word;
+}
+
+.task-card.is-done .task-card-title {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+.task-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.task-due-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.task-due-label.overdue {
+  color: var(--color-danger-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.recurrence-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-recurrence-subtle);
+  border: 1px solid var(--color-recurrence-border);
+  color: var(--color-recurrence-text);
+  line-height: 1.3;
+}
+
+.reminder-state-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  line-height: 1.3;
+}
+
+.reminder-state-badge.state-scheduled {
+  background: var(--color-teal-subtle);
+  border: 1px solid var(--color-teal-border);
+  color: var(--color-teal-text);
+}
+
+.reminder-state-badge.state-fired {
+  background: var(--color-success-subtle);
+  border: 1px solid var(--color-success-border);
+  color: var(--color-success-text);
+}
+
+.reminder-state-badge.state-missed {
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger-text);
+}
+
+.reminder-state-badge.state-cancelled {
+  background: rgba(148, 163, 184, 0.16);
+  color: var(--color-text-muted);
+}
+
+.task-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.task-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.task-icon-btn:hover {
+  background: var(--glass-bg-subtle);
+  color: var(--color-text-primary);
+}
+
+.task-icon-btn:active {
+  transform: scale(0.92);
+}
+
+.task-icon-btn.danger:hover {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger-text);
+}
+
+.task-edit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.task-edit-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.task-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.task-mini-btn {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--glass-border-strong);
+  background: var(--glass-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.task-mini-btn:hover {
+  background: var(--glass-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.task-mini-btn:active {
+  transform: scale(0.96);
+}
+
+.task-mini-btn.primary {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent);
+  color: #ffffff;
+  font-weight: var(--font-weight-semibold);
+}
+
+.task-mini-btn.primary:hover {
+  background: var(--color-accent);
+}
+
+/* Badge số lượng trên nút Header Tasks */
+.tasks-toggle-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-strong);
+  border: 1.5px solid var(--glass-bg-solid);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tasks-toggle-badge.has-missed {
+  background: var(--color-danger);
+}
+
+/* Cửa sổ nổi Desktop (#toast-overlay): nền trong suốt hoàn toàn */
+html.is-toast-overlay,
+html.is-toast-overlay body,
+html.is-toast-overlay #root {
+  background: transparent !important;
+  overflow: hidden;
+}
+
+/* In-app Reminder Toast Stack — neo góc dưới-phải, thông báo mới đẩy thông báo trước lên trên */
+.reminder-toast-stack {
+  position: fixed;
+  bottom: clamp(12px, 1.8vh, 20px);
+  right: clamp(12px, 1.4vw, 20px);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  max-height: calc(100vh - 32px);
+  pointer-events: none;
+}
+
+.reminder-toast-stack.is-desktop-overlay {
+  bottom: 12px;
+  right: 12px;
+  left: 12px;
+  max-height: calc(100vh - 24px);
+}
+
+.reminder-toast {
+  pointer-events: auto;
+  width: clamp(340px, 31vw, 430px);
+  max-width: calc(100vw - 24px);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 15px 16px;
+  border-radius: var(--radius-panel);
+  background-color: var(--glass-bg-elevated-solid);
+  border: 1px solid rgba(186, 230, 214, 0.26);
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.52),
+    0 0 22px rgba(16, 185, 129, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  color: var(--color-text-primary);
+  animation: reminderToastEnter 240ms var(--ease-standard) forwards;
+}
+
+.reminder-toast-stack.is-desktop-overlay .reminder-toast {
+  width: 100%;
+  max-width: 100%;
+  background-color: rgba(12, 20, 27, 0.78);
+  background-image: var(--matte-noise-image);
+  border-color: rgba(186, 230, 214, 0.28);
+  box-shadow:
+    0 16px 38px rgba(0, 0, 0, 0.56),
+    0 0 24px rgba(16, 185, 129, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.reminder-toast.is-closing {
+  animation: reminderToastExit 190ms var(--ease-exit) forwards;
+  pointer-events: none;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .reminder-toast {
+    background-color: rgba(14, 22, 29, 0.5);
+    background-image: var(--matte-noise-image);
+    backdrop-filter: blur(24px) saturate(175%);
+    -webkit-backdrop-filter: blur(24px) saturate(175%);
+  }
+
+  .reminder-toast-stack.is-desktop-overlay .reminder-toast {
+    background-color: rgba(12, 20, 27, 0.76);
+  }
+}
+
+.reminder-toast-avatar-wrap {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.reminder-toast-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-card);
+  object-fit: cover;
+  display: block;
+  border: 1.5px solid var(--color-accent-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.reminder-toast-bell-dot {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-accent-strong);
+  border: 2px solid var(--glass-bg-solid);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.45);
+}
+
+.reminder-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.reminder-toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reminder-toast-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.reminder-toast-time {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-mint);
+  flex-shrink: 0;
+}
+
+.reminder-toast-body {
+  margin: 6px 0 12px;
+  font-size: var(--font-size-base);
+  line-height: 1.48;
+  color: var(--color-text-secondary);
+  word-break: break-word;
+}
+
+.reminder-toast-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.reminder-toast-btn {
+  height: 31px;
+  padding: 0 13px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--glass-border-strong);
+  background: var(--glass-bg-subtle);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.reminder-toast-btn:hover {
+  background: var(--glass-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.reminder-toast-btn:active {
+  transform: scale(0.96);
+}
+
+.reminder-toast-btn.primary {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent);
+  color: #ffffff;
+  font-weight: var(--font-weight-semibold);
+}
+
+.reminder-toast-btn.primary:hover {
+  background: var(--color-accent);
+}
+
+@media (max-width: 520px) {
+  .tasks-drawer {
+    inset: 0;
+    width: 100vw;
+    max-width: 100vw;
+    border-radius: 0;
+    border: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tasks-drawer,
+  .tasks-drawer.closing,
+  .reminder-toast,
+  .reminder-toast.is-closing {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+ * Cửa sổ thu nhỏ kiểu Microsoft Teams (#mini-widget) — Matte Gravity Glass
+ * ============================================================================ */
+
+.mini-widget-shell {
+  width: 100vw;
+  height: 100vh;
+  padding: 22px;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  user-select: none;
+}
+
+.mini-widget-frame {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  opacity: 0;
+  transform: translate3d(0, 14px, 0) scale(0.92);
+  transform-origin: center bottom;
+  will-change: transform, opacity;
+  transition:
+    opacity 170ms cubic-bezier(0.4, 0, 1, 1),
+    transform 170ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.mini-widget-frame.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition:
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mini-widget-frame,
+  .mini-widget-frame.is-visible {
+    transition: none;
+    transform: none;
+  }
+}
+
+.mini-widget-card {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 10px;
+  background: var(--color-bg-base);
+  border: 1px solid rgba(186, 230, 214, 0.22);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.38),
+    0 0 14px rgba(16, 185, 129, 0.16),
+    0 0 4px rgba(110, 231, 183, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  -webkit-app-region: drag;
+  cursor: grab;
+}
+
+.mini-widget-card:active {
+  cursor: grabbing;
+}
+
+/* 8 vùng nắm kéo resize vô hình bám sát viền .mini-widget-card */
+.mini-widget-resize-handle {
+  position: absolute;
+  z-index: 6;
+  -webkit-app-region: no-drag;
+}
+
+.mini-widget-resize-handle.is-n {
+  top: -4px;
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.mini-widget-resize-handle.is-s {
+  bottom: -4px;
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.mini-widget-resize-handle.is-e {
+  top: 8px;
+  bottom: 8px;
+  right: -4px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.mini-widget-resize-handle.is-w {
+  top: 8px;
+  bottom: 8px;
+  left: -4px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.mini-widget-resize-handle.is-nw {
+  top: -5px;
+  left: -5px;
+  width: 13px;
+  height: 13px;
+  z-index: 7;
+  cursor: nwse-resize;
+}
+
+.mini-widget-resize-handle.is-ne {
+  top: -5px;
+  right: -5px;
+  width: 13px;
+  height: 13px;
+  z-index: 7;
+  cursor: nesw-resize;
+}
+
+.mini-widget-resize-handle.is-sw {
+  bottom: -5px;
+  left: -5px;
+  width: 13px;
+  height: 13px;
+  z-index: 7;
+  cursor: nesw-resize;
+}
+
+.mini-widget-resize-handle.is-se {
+  bottom: -5px;
+  right: -5px;
+  width: 13px;
+  height: 13px;
+  z-index: 7;
+  cursor: nwse-resize;
+}
+
+.mini-widget-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  border-radius: 9px;
+  clip-path: inset(0 round 9px);
+  opacity: 0;
+  transition: opacity 220ms ease;
+  pointer-events: none;
+}
+
+.mini-widget-video.is-ready {
+  opacity: 1;
+}
+
+.mini-widget-vignette {
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 10, 14, 0.5) 0%,
+    rgba(6, 10, 14, 0.04) 36%,
+    rgba(6, 10, 14, 0.1) 66%,
+    rgba(6, 10, 14, 0.82) 100%
+  );
+  pointer-events: none;
+}
+
+.mini-widget-controls {
+  position: absolute;
+  top: clamp(6px, 3.4vh, 12px);
+  right: clamp(6px, 2.8vw, 12px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: clamp(4px, 1.8vw, 9px);
+  opacity: 0.84;
+  transition: opacity var(--duration-fast) ease;
+  -webkit-app-region: no-drag;
+}
+
+.mini-widget-card:hover .mini-widget-controls {
+  opacity: 1;
+}
+
+.mini-widget-btn {
+  width: clamp(18px, 6.8vw, 28px);
+  height: clamp(18px, 6.8vw, 28px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: rgba(241, 245, 249, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85));
+  transition:
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.mini-widget-icon {
+  width: 68%;
+  height: 68%;
+  display: block;
+}
+
+.mini-widget-btn:hover {
+  color: var(--color-accent-mint);
+  transform: scale(1.12);
+}
+
+.mini-widget-btn.is-danger:hover {
+  color: #fb7185;
+}
+
+.mini-widget-btn:active {
+  transform: scale(0.94);
+}
+
+.mini-widget-footer {
+  position: absolute;
+  left: clamp(8px, 3.2vw, 14px);
+  right: clamp(8px, 3.2vw, 14px);
+  bottom: clamp(6px, 3.2vh, 12px);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: none;
+}
+
+.mini-widget-identity {
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(5px, 2vw, 8px);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
+}
+
+.mini-widget-identity:hover .mini-widget-name {
+  color: var(--color-accent-mint);
+}
+
+.mini-widget-dot {
+  width: clamp(5px, 2.2vw, 9px);
+  height: clamp(5px, 2.2vw, 9px);
+  border-radius: 50%;
+  background: var(--color-accent-mint);
+  box-shadow: 0 0 8px rgba(110, 231, 183, 0.8);
+  flex-shrink: 0;
+}
+
+.mini-widget-name {
+  font-size: clamp(10px, 4.1vw, 15px);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.015em;
+  color: rgba(248, 250, 252, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  line-height: 1.2;
+  transition: color var(--duration-fast) ease;
+}

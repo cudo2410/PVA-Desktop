@@ -1,18 +1,22 @@
-appId: com.electron.app
-productName: pva-temp
+appId: com.pva.desktop
+productName: PVA
 directories:
   buildResources: build
 files:
   - '!**/.vscode/*'
   - '!src/*'
+  - '!docs/**'
+  - '!g1-dataset/**'
+  - '!scripts/**'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+  - migrations/**
 win:
-  executableName: pva-temp
+  executableName: PVA
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

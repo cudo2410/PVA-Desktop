@@ -10,6 +10,7 @@ export interface OllamaProcessStatus {
 export class OllamaProcessManager {
   private readonly baseUrl: string
   private startPromise: Promise<OllamaProcessStatus> | null = null
+  private ensuring = false
   private spawnedProcess: ChildProcess | null = null
   private cachedBinaryPath: string | null | undefined = undefined
   private lastStartAttemptTime = 0
@@ -17,6 +18,13 @@ export class OllamaProcessManager {
 
   constructor(baseUrl = 'http://localhost:11434') {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
+  }
+
+  /**
+   * Cho biết tiến trình kiểm tra/khởi chạy Ollama tự động có đang diễn ra hay không
+   */
+  isStarting(): boolean {
+    return this.ensuring || this.startPromise !== null
   }
 
   /**
@@ -192,10 +200,15 @@ export class OllamaProcessManager {
    * Đảm bảo server đang chạy, nếu chưa thì tự động khởi động
    */
   async ensureRunning(): Promise<OllamaProcessStatus> {
-    if (await this.isServerRunning()) {
-      return { success: true }
+    this.ensuring = true
+    try {
+      if (await this.isServerRunning()) {
+        return { success: true }
+      }
+      return await this.startServer()
+    } finally {
+      this.ensuring = false
     }
-    return await this.startServer()
   }
 
   /**

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { OllamaChatModel } from './OllamaChatModel'
+import type { OllamaProcessManager } from './OllamaProcessManager'
 import { ModelError } from '../../core/models/ModelError'
 
 describe('OllamaChatModel Adapter', () => {
@@ -275,5 +276,18 @@ describe('OllamaChatModel Adapter', () => {
     expect(capturedBody).toBeTruthy()
     const parsed = JSON.parse(capturedBody)
     expect(parsed.think).toBe(false)
+  })
+
+  it('health() trả status starting khi processManager đang tự khởi chạy Ollama', async () => {
+    const fakeProcessManager = {
+      isServerRunning: vi.fn().mockResolvedValue(false),
+      isStarting: vi.fn().mockReturnValue(true)
+    } as unknown as OllamaProcessManager
+
+    const model = new OllamaChatModel({ processManager: fakeProcessManager })
+    const health = await model.health()
+
+    expect(health.ok).toBe(false)
+    expect(health.status).toBe('starting')
   })
 })

@@ -1,5 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { ChatService, DEFAULT_SYSTEM_PROMPT } from './ChatService'
+import { RuleRouter } from './RuleRouter'
+import { TaskService } from './TaskService'
+import { ReminderService } from './ReminderService'
+import { InAppScheduler } from '../../adapters/scheduler/InAppScheduler'
+import type { Task, CreateTaskInput } from '../models/Task'
+import type { Reminder, CreateReminderInput } from '../models/Reminder'
+import type { TaskRepository } from '../ports/TaskRepository'
+import type { ReminderRepository } from '../ports/ReminderRepository'
 import { ChatModel, ChatModelHealth, ChatModelOptions } from '../ports/ChatModel'
 import { Message } from '../models/ChatMessage'
 import {
@@ -312,5 +320,105 @@ describe('ChatService Domain Service', () => {
     const list = await service.listConversations()
     const target = list.find((c) => c.id === conv.id)
     expect(target?.title).toBe('Lập kế hoạch tuần này giúp tôi nhé')
+  })
+
+  it('định tuyến lệnh thêm việc, đặt nhắc và mở ứng dụng qua RuleRouter mà không gọi LLM', async () => {
+    const model = new MockChatModel()
+    const tasks: Task[] = []
+    const fakeTaskRepo: TaskRepository = {
+      async create(input: CreateTaskInput): Promise<Task> {
+        const now = new Date().toISOString()
+        const t: Task = {
+          id: tasks.length + 1,
+          title: input.title,
+          dueAt: input.dueAt ?? null,
+          status: 'open',
+          recurrence: input.recurrence ?? 'none',
+          createdAt: now,
+          updatedAt: now
+        }
+        tasks.push(t)
+        return t
+      },
+      async findById(id: number): Promise<Task | null> {
+        return tasks.find((t) => t.id === id) ?? null
+      },
+      async list(): Promise<Task[]> {
+        return [...tasks]
+      },
+      async update(): Promise<Task | null> {
+        return null
+      },
+      async delete(): Promise<boolean> {
+        return false
+      }
+    }
+
+    const reminders: Reminder[] = []
+    const fakeReminderRepo: ReminderRepository = {
+      async create(input: CreateReminderInput): Promise<Reminder> {
+        const r: Reminder = {
+          id: reminders.length + 1,
+          taskId: input.taskId ?? null,
+          text: input.text,
+          remindAt: input.remindAt,
+          state: 'scheduled',
+          recurrence: input.recurrence ?? 'none',
+          firedAt: null
+        }
+        reminders.push(r)
+        return r
+      },
+      async findById(id: number): Promise<Reminder | null> {
+        return reminders.find((r) => r.id === id) ?? null
+      },
+      async list(): Promise<Reminder[]> {
+        return [...reminders]
+      },
+      async listScheduled(): Promise<Reminder[]> {
+        return reminders.filter((r) => r.state === 'scheduled')
+      },
+      async updateState(): Promise<Reminder | null> {
+        return null
+      },
+      async delete(): Promise<boolean> {
+        return false
+      }
+    }
+
+    const scheduler = new InAppScheduler()
+    const taskService = new TaskService(fakeTaskRepo)
+    const reminderService = new ReminderService(fakeReminderRepo, scheduler, { notify: vi.fn() })
+    const onTasksChanged = vi.fn()
+    const onRemindersChanged = vi.fn()
+
+    const service = new ChatService(model, {
+      intentRouter: new RuleRouter(),
+      taskService,
+      reminderService,
+      onTasksChanged,
+      onRemindersChanged
+    })
+
+    const taskRes = await service.send('thêm việc ôn bài kiểm tra')
+    expect(taskRes.text).toContain('ôn bài kiểm tra')
+    expect(tasks).toHaveLength(1)
+    expect(onTasksChanged).toHaveBeenCalledTimes(1)
+    expect(model.lastReceivedMessages).toHaveLength(0)
+
+    const remChunks: string[] = []
+    const remRes = await service.sendStream('nhắc tôi uống nước sau 2 phút', (c) =>
+      remChunks.push(c)
+    )
+    expect(remRes.text).toContain('uống nước')
+    expect(remChunks.join('')).toBe(remRes.text)
+    expect(reminders).toHaveLength(1)
+    expect(onRemindersChanged).toHaveBeenCalledTimes(1)
+
+    const openRes = await service.send('mở Google Chrome')
+    expect(openRes.text).toContain('Google Chrome')
+    expect(openRes.text).toContain('PermissionGuard')
+
+    reminderService.dispose()
   })
 })

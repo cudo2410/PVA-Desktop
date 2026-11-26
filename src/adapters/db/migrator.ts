@@ -68,10 +68,14 @@ export async function runMigrations(
  * Xác định thư mục migrations linh hoạt trong môi trường dev lẫn production.
  */
 function resolveMigrationsDir(): string {
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath
   const possiblePaths = [
     join(process.cwd(), 'migrations'),
     join(__dirname, '../../migrations'),
-    join(__dirname, '../migrations')
+    join(__dirname, '../migrations'),
+    ...(resourcesPath
+      ? [join(resourcesPath, 'app.asar.unpacked', 'migrations'), join(resourcesPath, 'migrations')]
+      : [])
   ]
 
   for (const p of possiblePaths) {

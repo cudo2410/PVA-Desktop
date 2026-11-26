@@ -69,14 +69,12 @@ Các điểm nổi bật về mặt kỹ thuật:
   - Bắt lỗi an toàn tại IPC Adapter, không bao giờ để lộ raw error hay exception stack trace ra ngoài Renderer.
   - Cấu hình Electron an toàn: `sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`.
   - Cầu nối Preload an toàn: Định nghĩa Single Source of Truth tại `src/preload/types.ts`. Expose duy nhất đối tượng `window.api.chat` qua `contextBridge`, tuyệt đối không để lộ `ipcRenderer` thô.
-- **Giao diện người dùng hội thoại (Chat UI) & Apple Liquid Glass:**
-  - Xây dựng bằng React 19 với hệ thống **Design Tokens** tập trung ([`tokens.css`](src/ui/src/assets/tokens.css)) theo phong cách **Apple Liquid Glass**.
-  - Hỗ trợ đa giao diện (Dark Theme / Light Theme) với nút chuyển đổi nhanh trên Header.
-  - Hiển thị danh sách bong bóng hội thoại giữa người dùng và trợ lý ảo PVA kèm mốc thời gian.
-  - Trạng thái loading thời gian thực ("PVA đang suy nghĩ...") và biểu tượng xoay trực quan.
-  - Thanh thông báo lỗi (Error Banner) hiển thị chi tiết mã lỗi chuẩn hóa khi mất kết nối hoặc timeout.
-  - Huy hiệu (badge) kiểm tra trạng thái kết nối Ollama theo thời gian thực (Xanh: Sẵn sàng, Vàng: Đang kiểm tra, Đỏ: Ngoại tuyến).
-  - Tích hợp các câu hỏi gợi ý nhanh và phím tắt thông minh (`Enter` để gửi, `Shift + Enter` để xuống dòng).
+- **Giao diện người dùng Matte Gravity Glass (Kính nhám + Khối nổi Gravity):**
+  - Xây dựng bằng React 19 + CSS thuần với hệ thống **Design Tokens** hợp nhất tại [`tokens.css`](src/ui/src/assets/tokens.css): nền đá phiến sâu `#060A0E`, bề mặt kính nhám `rgba(14, 22, 29, 0.88)`, tông xanh Emerald/Mint/Deep Teal, đạt tương phản WCAG AA/AAA và có fallback `@supports (backdrop-filter)` cùng `@media (prefers-reduced-motion: reduce)`.
+  - Hệ bo góc đồng tâm 4 tầng (`16px` khối nổi → `12px` thẻ/bong bóng → `8px` input/nút → `5px` chi tiết nhỏ, `999px` pill) và đồng bộ kích thước Header/Drawer.
+  - Bố cục Split View nổi responsive theo tỉ lệ `%` viewport (`chatWidthPct` kéo giãn mượt `28%–65%`, tự xếp dọc ở `≤ 860px` và full-bleed ở `≤ 520px`).
+  - Tích hợp 2 ngăn kéo nổi đồng nhất (`HistoryDrawer`, `TasksDrawer` gộp Công việc & Nhắc nhở có chu kỳ lặp lại), kèm bộ control Liquid Glass riêng (`GlassDateTimePicker` bung lịch sang trái, `GlassSelect`, `ConfirmModal`, `ReminderToast`).
+  - Hỗ trợ trạng thái xử lý & streaming thời gian thực, gợi ý câu hỏi nhanh không icon thừa, và phím tắt thông minh (`Enter` để gửi, `Shift + Enter` để xuống dòng).
 - **Thiết lập Database SQLite Embedded & Migration 001 (SRS v2.1):**
   - Schema khởi tạo [`migrations/001_initial_schema.sql`](migrations/001_initial_schema.sql) gồm 7 bảng chuẩn SQLite + bảng ảo tìm kiếm toàn văn `messages_fts` (FTS5): `conversations`, `messages`, `messages_fts`, `tasks` (kèm trigger cập nhật `updated_at`), `reminders`, `settings`, `profile_items` và `schema_migrations`.
   - Bộ quản lý Database [`src/adapters/db/database.ts`](src/adapters/db/database.ts) tự động tạo file SQLite tại `app.getPath('userData')`, kích hoạt `PRAGMA foreign_keys = ON` và chế độ `WAL`.
@@ -399,9 +397,13 @@ Các file sau khi đóng gói sẽ được tạo ra tại thư mục `dist/`.
   - [x] Xem chi tiết nội dung cuộc hội thoại và chuyển đổi phiên làm việc liền mạch.
   - [x] Tạo cuộc trò chuyện mới để bắt đầu phiên độc lập.
   - [x] Xóa cuộc hội thoại có hộp thoại xác nhận (ConfirmModal) và cascade sạch tin nhắn.
-- [ ] **Quản lý công việc (Task Management)**
-  - [ ] Bảng theo dõi và quản lý công việc (Todo List).
-  - [ ] Triển khai các Repository SQLite lưu `tasks` và `reminders`.
+- [x] **Quản lý công việc, Nhắc nhở, Bộ định tuyến & Đóng gói lần 1 (Tuần 4)**
+  - [x] Triển khai `TaskRepository`, `TaskService`, `SqliteTaskRepository`, kênh IPC `tasks:*` và bộ unit test dùng Fake Repository & SQLite in-memory.
+  - [x] Giao diện gộp Công việc & Nhắc nhở (`TasksDrawer`) phong cách Apple Liquid Glass với control lịch (`GlassDateTimePicker`) và dropdown (`GlassSelect`) riêng không phụ thuộc Windows, hỗ trợ lặp lại hàng ngày / hàng tuần / hàng tháng (`migrations/002_add_recurrence.sql`, lưu tách 2 bảng lịch sử `tasks` và `reminders`), thêm/sửa inline/xóa có xác nhận (`ConfirmModal`)/đánh dấu xong/lọc/sắp xếp (FR-04).
+  - [x] Triển khai điểm mở rộng `Scheduler`, `InAppScheduler`, `ReminderService`, `SqliteReminderRepository`: nạp lại nhắc khi khởi động, đánh dấu "đã lỡ", từ chối giờ quá khứ (FR-05).
+  - [x] Icon khay hệ thống (`TrayManager`), thu xuống khay khi đóng cửa sổ và thông báo Windows (`WindowsNotifier` + `app.setAppUserModelId('com.pva.desktop')`) + `ReminderToast` trong app.
+  - [x] Triển khai điểm mở rộng `IntentRouter`, `VietnameseTimeParser` và `RuleRouter` v1 (đạt 100% trên bộ 32 câu mẫu tiếng Việt, FR-16).
+  - [x] Đóng gói thử lần 1 bằng `electron-builder` tạo bộ cài Windows `.exe` (`dist/pva-desktop-1.0.0-setup.exe` & `dist/win-unpacked/PVA.exe`).
 
 ---
 

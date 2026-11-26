@@ -1,52 +1,9 @@
+@import './tokens.css';
 @import './base.css';
 
-:root {
-  /* Apple Liquid Glass Design Tokens */
-  --liquid-bg-base: #090b10;
-  --liquid-bg-surface: rgba(18, 23, 34, 0.65);
-  --liquid-bg-surface-elevated: rgba(26, 32, 48, 0.75);
-  --liquid-glass-border: rgba(255, 255, 255, 0.09);
-  --liquid-glass-border-focus: rgba(96, 165, 250, 0.45);
-  --liquid-glass-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-  --liquid-glass-blur: blur(20px);
-  --liquid-glass-blur-sm: blur(12px);
-
-  /* Colors */
-  --liquid-accent-blue: #3b82f6;
-  --liquid-accent-blue-hover: #2563eb;
-  --liquid-text-primary: #f8fafc;
-  --liquid-text-secondary: #94a3b8;
-  --liquid-text-tertiary: #64748b;
-
-  /* Geometry & Shadows */
-  --liquid-radius-sm: 8px;
-  --liquid-radius-md: 14px;
-  --liquid-radius-lg: 20px;
-  --liquid-radius-pill: 9999px;
-  --liquid-shadow-elevated: 0 12px 36px rgba(0, 0, 0, 0.45);
-  --liquid-shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.25);
-}
-
-html,
-body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background-color: var(--liquid-bg-base);
-  color: var(--liquid-text-primary);
-  font-family:
-    'Google Sans',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  user-select: text;
-}
-
+/* ==========================================================================
+   1. APP SHELL — FLOATING MATTE GRAVITY SPLIT LAYOUT
+   ========================================================================== */
 #root {
   width: 100vw;
   height: 100vh;
@@ -54,9 +11,9 @@ body {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  background-color: var(--color-bg-base);
 }
 
-/* App Shell */
 .chat-app {
   display: flex;
   flex-direction: column;
@@ -64,55 +21,287 @@ body {
   width: 100%;
   position: relative;
   overflow: hidden;
-  background: var(--liquid-bg-base);
-  transform: translateZ(0);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(16, 185, 129, 0.06) 0%, transparent 45%),
+    radial-gradient(circle at 86% 88%, rgba(20, 184, 166, 0.05) 0%, transparent 42%),
+    var(--color-bg-base);
 }
 
-/* Ambient Liquid Lighting */
-.liquid-ambient-glow {
+.chat-app.split-layout {
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh;
+  padding: var(--gravity-gap);
+  gap: 0;
+}
+
+/* Cột trái: Khối nổi Sân khấu Nhân vật Asada Sinon */
+.character-stage-panel {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  background-color: var(--color-bg-stage);
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ranh giới kéo thu phóng nằm đúng giữa khe Gravity */
+.split-resizer {
+  flex: 0 0 var(--gravity-gap);
+  width: var(--gravity-gap);
+  height: 100%;
+  position: relative;
+  z-index: 30;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Vùng bắt chuột mở rộng nhẹ để dễ kéo mà không che góc bo */
+.split-resizer::before {
+  content: '';
   position: absolute;
-  top: -150px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 700px;
-  height: 450px;
-  background: radial-gradient(
-    circle at center,
-    rgba(59, 130, 246, 0.12) 0%,
-    rgba(139, 92, 246, 0.08) 40%,
-    transparent 70%
-  );
-  filter: blur(60px);
+  top: 24px;
+  bottom: 24px;
+  left: -4px;
+  right: -4px;
+}
+
+.resizer-handle-line {
+  width: 3px;
+  height: clamp(36px, 6vh, 56px);
+  border-radius: var(--radius-pill);
+  background: rgba(186, 230, 214, 0.16);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    height var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
+}
+
+.split-resizer:hover .resizer-handle-line,
+.split-resizer.is-dragging .resizer-handle-line {
+  height: clamp(56px, 12vh, 96px);
+  background-color: var(--color-accent-mint);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.55);
+}
+
+.chat-app.is-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.chat-app.is-resizing * {
+  user-select: none !important;
+  cursor: col-resize !important;
+}
+
+.chat-app.is-resizing video,
+.chat-app.is-resizing iframe {
+  pointer-events: none !important;
+}
+
+/* Cột phải: Khối nổi Kính Nhám Trò chuyện */
+.chat-panel {
+  flex: 0 0 auto;
+  min-width: clamp(280px, 28vw, 320px);
+  max-width: 70vw;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  border-radius: var(--radius-panel);
+  background-color: var(--glass-bg-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  z-index: 5;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .chat-panel {
+    background-color: var(--glass-bg);
+    background-image: var(--matte-noise-image);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+}
+
+/* ==========================================================================
+   2. CHARACTER STAGE (ASADA SINON VIDEO & EMERALD STUDIO VIGNETTE)
+   ========================================================================== */
+.character-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  background-color: var(--color-bg-stage);
+}
+
+.character-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  transition:
+    opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.character-video.video-active {
+  opacity: 1;
+  transform: scale(1);
+  z-index: 2;
+}
+
+.character-video.video-inactive {
+  opacity: 0;
+  transform: scale(1.018);
   z-index: 1;
 }
 
-/* Header - Liquid Glass Panel */
+.stage-capcut-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(16, 185, 129, 0.22) 0%,
+    rgba(20, 184, 166, 0.12) 45%,
+    transparent 74%
+  );
+  mix-blend-mode: screen;
+  transition: opacity 0.3s ease-out;
+}
+
+.stage-capcut-flash.flash-active {
+  animation: capcutFlashPulse 0.55s var(--ease-standard) forwards;
+}
+
+@keyframes capcutFlashPulse {
+  0% {
+    opacity: 0;
+    filter: blur(10px) brightness(1);
+  }
+  35% {
+    opacity: 0.85;
+    filter: blur(4px) brightness(1.18);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(12px) brightness(1);
+  }
+}
+
+/* Lớp phủ studio tối nhám dịu cạnh khung nổi */
+.stage-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background:
+    linear-gradient(
+      to right,
+      rgba(6, 10, 14, 0.2) 0%,
+      transparent 18%,
+      transparent 74%,
+      rgba(6, 10, 14, 0.55) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(6, 10, 14, 0.22) 0%,
+      transparent 28%,
+      transparent 72%,
+      rgba(6, 10, 14, 0.45) 100%
+    );
+  pointer-events: none;
+}
+
+/* Quầng sáng Emerald tinh tế khi nhân vật đang tương tác */
+.stage-ambient-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.55s ease;
+}
+
+.character-stage.is-interacting .stage-ambient-glow {
+  opacity: 1;
+  background: radial-gradient(circle at 50% 46%, rgba(16, 185, 129, 0.16) 0%, transparent 66%);
+  animation: ambientGlowPulse 2.6s infinite ease-in-out;
+}
+
+@keyframes ambientGlowPulse {
+  0%,
+  100% {
+    transform: scale(0.97);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   3. CHAT HEADER (ĐỒNG BỘ TUYỆT ĐỐI CHIỀU CAO & PADDING VỚI DRAWER HEADER)
+   ========================================================================== */
 .chat-header {
-  height: 64px;
-  min-height: 64px;
+  height: var(--header-height);
+  min-height: var(--header-height);
+  padding: 0 var(--header-pad-x);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  background: var(--liquid-bg-surface);
-  backdrop-filter: var(--liquid-glass-blur);
-  -webkit-backdrop-filter: var(--liquid-glass-blur);
-  border-bottom: 1px solid var(--liquid-glass-border);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  gap: var(--space-2);
+  background: var(--glass-bg-header);
+  border-bottom: 1px solid var(--glass-divider);
+  box-shadow: var(--glass-highlight);
   position: relative;
   z-index: 20;
+  flex-shrink: 0;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .chat-header {
+    backdrop-filter: var(--glass-blur-sm);
+    -webkit-backdrop-filter: var(--glass-blur-sm);
+  }
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
 }
 
 .brand-avatar-wrapper {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   position: relative;
   display: flex;
@@ -127,61 +316,64 @@ body {
   object-fit: cover;
   display: block;
   border-radius: 50%;
-  border: 2px solid #10b981;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  border: 1.5px solid var(--color-accent-border);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.28);
 }
 
 .brand-avatar-status-dot {
   position: absolute;
-  bottom: 0px;
-  right: 0px;
+  bottom: 0;
+  right: 0;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #10b981;
-  border: 2px solid #080c14;
-  box-shadow: 0 0 8px #10b981;
+  background: var(--color-accent);
+  border: 2px solid var(--glass-bg-solid);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
   transition:
-    background-color 0.3s ease,
-    box-shadow 0.3s ease;
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
+.brand-avatar-status-dot.status-idle,
 .brand-avatar-status-dot.status-online {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
-}
-
-.brand-avatar-status-dot.status-idle {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: var(--color-accent);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
 }
 
 .brand-avatar-status-dot.status-listening {
-  background: #38bdf8;
-  box-shadow: 0 0 10px #38bdf8;
-  animation: pulseDot 0.8s infinite alternate;
+  background: var(--color-teal);
+  box-shadow: 0 0 10px rgba(20, 184, 166, 0.8);
+  animation: pulseDot 0.9s infinite alternate;
 }
 
-.brand-avatar-status-dot.status-processing {
-  background: #f59e0b;
-  box-shadow: 0 0 10px #f59e0b;
+.brand-avatar-status-dot.status-processing,
+.brand-avatar-status-dot.status-starting {
+  background: var(--color-warning);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.75);
   animation: pulseDot 1s infinite alternate;
 }
 
 .brand-avatar-status-dot.status-speaking {
-  background: #10b981;
-  box-shadow: 0 0 12px #10b981;
-  animation: pulseDot 0.6s infinite alternate;
-}
-
-.brand-avatar-status-dot.status-starting {
-  background: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+  background: var(--color-accent-mint);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.85);
+  animation: pulseDot 0.65s infinite alternate;
 }
 
 .brand-avatar-status-dot.status-offline {
-  background: #64748b;
-  box-shadow: 0 0 6px rgba(100, 116, 139, 0.4);
+  background: var(--color-text-muted);
+  box-shadow: none;
+}
+
+@keyframes pulseDot {
+  from {
+    opacity: 0.55;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.12);
+  }
 }
 
 .brand-title {
@@ -189,416 +381,115 @@ body {
   flex-direction: column;
   justify-content: center;
   gap: 2px;
+  min-width: 0;
 }
 
 .brand-name {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: -0.01em;
-  color: #ffffff;
+  color: var(--color-text-primary);
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-subtitle {
-  font-size: 11.5px;
-  font-weight: 400;
-  color: #8e8e93;
-  line-height: 1.2;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent-mint);
+  line-height: 1.25;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brand-subtitle.is-error-clickable {
+  color: var(--color-danger-text);
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  transition: color var(--duration-fast) ease;
+}
+
+.brand-subtitle.is-error-clickable:hover {
+  color: var(--color-text-primary);
 }
 
 .header-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-/* Nút mở Lịch sử hình vuông bo góc chứa <|, chỉ đổi màu viền và icon khi hover/bấm vào */
-.history-drawer-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1.2px solid rgba(255, 255, 255, 0.16);
-  color: #8e8e93;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    color 0.18s ease;
-  user-select: none;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-.history-drawer-toggle-btn:hover {
-  border-color: #10b981;
-  color: #34d399;
-}
-
-.history-drawer-toggle-btn.is-open {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: #10b981;
-  color: #10b981;
-}
-
-.history-drawer-toggle-btn.is-open:hover {
-  border-color: #34d399;
-  color: #34d399;
-}
-
-.drawer-icon-symbol {
-  font-family:
-    monospace,
-    -apple-system,
-    sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-/* History Pill (UC-06) */
-.history-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: var(--liquid-radius-pill);
-  font-size: 12px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--liquid-glass-border);
-  color: var(--liquid-text-secondary);
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    color 0.18s ease;
-  user-select: none;
-}
-
-.history-pill:hover {
-  border-color: #10b981;
-  color: var(--liquid-text-primary);
-}
-
-.history-icon {
-  font-size: 13px;
-}
-
-/* Persistence Toggle Pill */
-.persistence-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #94a3b8;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    color 0.18s ease;
-  user-select: none;
-}
-
-.persistence-pill:hover {
-  border-color: #10b981;
-  color: #f1f5f9;
-}
-
-.persistence-pill.active {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: #cbd5e1;
-}
-
-.persistence-pill.active:hover {
-  border-color: #10b981;
-  color: #ffffff;
-}
-
-.persistence-icon {
-  font-size: 12px;
-}
-
-/* Status Pill */
-.status-pill {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  padding: 5px 14px;
-  border-radius: var(--liquid-radius-pill);
-  font-size: 12px;
-  font-weight: 500;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--liquid-glass-border);
-  transition: border-color 0.18s ease;
-  cursor: pointer;
-  user-select: none;
-}
-
-.status-pill:hover {
-  border-color: #10b981;
-}
-
-/* App Status Bar (Nhiệm vụ 6: Idle / Listening / Processing / Speaking / Error) */
-.app-status-bar {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 12px;
-  border-radius: var(--liquid-radius-pill);
-  font-size: 12px;
-  font-weight: 500;
-  backdrop-filter: var(--liquid-glass-blur-sm);
-  -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e5e7eb;
-  transition: all 0.22s ease;
-  user-select: none;
-  box-sizing: border-box;
-}
-
-.app-status-bar.is-clickable {
-  cursor: pointer;
-}
-
-.app-status-bar.is-clickable:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-/* State: Idle */
-.app-status-bar.state-idle {
-  border-color: rgba(16, 185, 129, 0.25);
-  background: rgba(16, 185, 129, 0.06);
-  color: #a7f3d0;
-}
-
-.status-indicator-dot.idle-dot {
-  width: 7.5px;
-  height: 7.5px;
-  border-radius: 50%;
-  background-color: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
-  display: inline-block;
-}
-
-/* State: Listening */
-.app-status-bar.state-listening {
-  border-color: rgba(56, 189, 248, 0.55);
-  background: rgba(56, 189, 248, 0.12);
-  color: #bae6fd;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
-}
-
-.status-indicator-icon.listening-wave,
-.status-indicator-icon.speaking-pulse {
-  display: flex;
-  align-items: center;
-  gap: 2.5px;
-  height: 12px;
-}
-
-.sound-wave-bar {
-  width: 2.5px;
-  height: 9px;
-  border-radius: 2px;
-  background-color: #38bdf8;
-  animation: soundWave 0.8s ease-in-out infinite alternate;
-}
-
-.sound-wave-bar.bar-1 {
-  animation-delay: 0s;
-}
-
-.sound-wave-bar.bar-2 {
-  animation-delay: 0.25s;
-}
-
-.sound-wave-bar.bar-3 {
-  animation-delay: 0.5s;
-}
-
-@keyframes soundWave {
-  0% {
-    height: 4px;
-    opacity: 0.4;
-  }
-  100% {
-    height: 12px;
-    opacity: 1;
-  }
-}
-
-/* State: Processing */
-.app-status-bar.state-processing {
-  border-color: rgba(245, 158, 11, 0.5);
-  background: rgba(245, 158, 11, 0.12);
-  color: #fde68a;
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.25);
-}
-
-.status-indicator-spinner {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.processing-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background-color: #f59e0b;
-  animation: processingDot 1.2s infinite ease-in-out;
-}
-
-.processing-dot.dot-1 {
-  animation-delay: 0s;
-}
-
-.processing-dot.dot-2 {
-  animation-delay: 0.2s;
-}
-
-.processing-dot.dot-3 {
-  animation-delay: 0.4s;
-}
-
-@keyframes processingDot {
-  0%,
-  80%,
-  100% {
-    transform: scale(0.6);
-    opacity: 0.4;
-  }
-  40% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
-/* State: Speaking */
-.app-status-bar.state-speaking {
-  border-color: rgba(16, 185, 129, 0.55);
-  background: rgba(16, 185, 129, 0.14);
-  color: #6ee7b7;
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
-}
-
-.sound-wave-bar.active {
-  background-color: #10b981;
-  animation: soundWave 0.6s ease-in-out infinite alternate;
-}
-
-/* State: Error */
-.app-status-bar.state-error {
-  border-color: rgba(239, 68, 68, 0.5);
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.25);
-}
-
-.status-bar-code {
-  font-family: 'SF Mono', Menlo, Consolas, Monaco, monospace;
-  font-size: 10px;
-  padding: 1px 5px;
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: 4px;
-  margin-left: 4px;
-}
-
-.status-bar-action-hint {
-  font-size: 11px;
-  opacity: 0.85;
-  font-weight: 600;
-}
-
-/* Composer Mic Button Active (Listening State) */
-.composer-action-btn.mic-btn.is-listening {
-  color: #38bdf8 !important;
-  border-color: rgba(56, 189, 248, 0.6) !important;
-  background: rgba(56, 189, 248, 0.2) !important;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5) !important;
-  animation: micPulse 1s infinite alternate !important;
-}
-
-@keyframes micPulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
-  }
-  100% {
-    transform: scale(1.08);
-    box-shadow: 0 0 16px rgba(56, 189, 248, 0.65);
-  }
-}
-
-.status-dot {
-  width: 7.5px;
-  height: 7.5px;
-  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.status-online {
-  background-color: #22c55e;
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+/* Bộ 3 nút Header đồng nhất tuyệt đối 36x36px, radius 6px đồng tâm với góc panel 16px (10px + 6px) */
+.tasks-toggle-btn,
+.settings-toggle-btn,
+.history-drawer-toggle-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-btn-size);
+  height: var(--icon-btn-size);
+  border-radius: var(--radius-header-btn);
+  background: var(--glass-bg-subtle);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  user-select: none;
+  flex-shrink: 0;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
 }
 
-.status-starting {
-  background-color: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
-  animation: pulseDot 1s infinite alternate;
+.tasks-toggle-btn:hover,
+.settings-toggle-btn:hover,
+.history-drawer-toggle-btn:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent-mint);
 }
 
-.status-missing {
-  background-color: #f97316;
-  box-shadow: 0 0 8px rgba(249, 115, 22, 0.8);
+.tasks-toggle-btn.is-open,
+.history-drawer-toggle-btn.is-open {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-accent-mint);
 }
 
-.status-checking {
-  background-color: #eab308;
-  box-shadow: 0 0 8px rgba(234, 179, 8, 0.6);
+.tasks-toggle-btn:active,
+.settings-toggle-btn:active,
+.history-drawer-toggle-btn:active {
+  transform: scale(0.94);
 }
 
-.status-offline {
-  background-color: #64748b;
-  box-shadow: 0 0 6px rgba(100, 116, 139, 0.4);
-}
-
-@keyframes pulseDot {
-  from {
-    opacity: 0.5;
-    transform: scale(0.85);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
-
-.status-label {
-  color: var(--liquid-text-secondary);
-}
-
-/* Chat Body */
+/* ==========================================================================
+   4. CHAT BODY, EMPTY STATE & MESSAGES
+   ========================================================================== */
 .chat-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 24px 20px;
+  padding: clamp(14px, 2vh, 22px) clamp(12px, 1.4vw, 20px);
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 10;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+.chat-body::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .chat-messages {
@@ -619,19 +510,22 @@ body {
   justify-content: center;
   flex: 1;
   text-align: center;
-  padding: 40px 20px;
+  padding: clamp(18px, 3vh, 36px) clamp(12px, 1.5vw, 20px);
   margin: auto;
+  width: 100%;
 }
 
 .empty-avatar-card {
-  width: 84px;
-  height: 84px;
+  width: clamp(64px, 7vw, 76px);
+  height: clamp(64px, 7vw, 76px);
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-  margin-bottom: 20px;
-  background: var(--liquid-bg-surface);
+  border: 2px solid var(--color-accent-border);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    0 0 22px rgba(16, 185, 129, 0.16);
+  margin-bottom: clamp(12px, 1.8vh, 18px);
+  background: var(--glass-bg-elevated-solid);
 }
 
 .empty-avatar-img {
@@ -642,52 +536,72 @@ body {
 }
 
 .empty-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: clamp(16px, 1.45vw, 20px);
+  font-weight: var(--font-weight-bold);
   letter-spacing: -0.02em;
-  color: var(--liquid-text-primary);
-  margin-bottom: 10px;
+  color: var(--color-text-primary);
+  margin-bottom: 8px;
 }
 
 .empty-subtitle {
-  font-size: 14.5px;
-  color: var(--liquid-text-secondary);
-  max-width: 520px;
-  line-height: 1.6;
-  margin-bottom: 28px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  max-width: 440px;
+  line-height: 1.55;
+  margin-bottom: clamp(16px, 2.5vh, 24px);
 }
 
 .suggested-prompts {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
-  max-width: 660px;
+  max-width: 520px;
+  width: 100%;
 }
 
 .prompt-btn {
-  background: var(--liquid-bg-surface);
-  backdrop-filter: var(--liquid-glass-blur-sm);
-  -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
-  border: 1px solid var(--liquid-glass-border);
-  box-shadow: var(--liquid-glass-highlight);
-  color: var(--liquid-text-secondary);
-  padding: 10px 18px;
-  border-radius: var(--liquid-radius-md);
-  font-size: 13.5px;
+  background: var(--glass-bg-elevated);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-highlight);
+  color: var(--color-text-secondary);
+  padding: 9px 14px;
+  border-radius: var(--radius-card);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.35;
   cursor: pointer;
+  text-align: center;
   transition:
-    border-color 0.18s ease,
-    color 0.18s ease;
-  text-align: left;
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
 }
 
 .prompt-btn:hover {
-  border-color: #10b981;
-  color: #ffffff;
+  background: var(--glass-bg-hover);
+  border-color: var(--color-accent-border);
+  color: var(--color-text-primary);
+  transform: translateY(-1px);
 }
 
-/* Message Rows - Facebook Messenger Layout */
+.prompt-btn:active {
+  transform: scale(0.98);
+}
+
+/* Date Divider */
+.chat-date-divider {
+  text-align: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  margin: 4px 0 10px;
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+
+/* Message Rows */
 .message-row {
   display: flex;
   width: 100%;
@@ -703,50 +617,10 @@ body {
   justify-content: flex-start;
 }
 
-/* Tiêu đề ngày định dạng Aa */
-.chat-date-divider {
-  text-align: center;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: #8e8e93;
-  margin: 6px 0 14px;
-  letter-spacing: 0.01em;
-  user-select: none;
-}
-
-/* Container bọc Avatar và bong bóng tin nhắn để căn dưới chính xác với box chat */
-.bubble-with-avatar {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  width: fit-content;
-  max-width: 100%;
-}
-
-/* Ava PVA căn dưới box chat theo nhận xét người dùng */
-.msg-avatar-wrapper {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  margin-bottom: 0;
-  align-self: flex-end;
-}
-
-.msg-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
 .message-content-wrapper {
   display: flex;
   flex-direction: column;
-  max-width: 76%;
+  max-width: 82%;
 }
 
 .message-row.user .message-content-wrapper {
@@ -757,61 +631,82 @@ body {
   align-items: flex-start;
 }
 
-/* Messenger Style Bubbles - Giảm bo góc 3 cạnh xuống 13px (cạnh nhọn 4px) */
+.bubble-with-avatar {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.msg-avatar-wrapper {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--shadow-sm);
+  align-self: flex-end;
+}
+
+.msg-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Concentric Bubbles: 3 góc 12px (--radius-card), góc đuôi 4px */
 .message-bubble {
   display: inline-flex;
   align-items: center;
   width: fit-content;
   max-width: 100%;
-  min-height: 40px;
-  padding: 10px 15px;
-  border-radius: 13px;
+  min-height: 38px;
+  padding: 9px 14px;
+  border-radius: var(--radius-card);
   line-height: 1.5;
-  font-size: 14.5px;
+  font-size: var(--font-size-base);
   word-break: break-word;
   white-space: pre-wrap;
   position: relative;
-  transition: transform 0.15s ease;
-  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-standard);
   user-select: text;
 }
 
-.message-bubble:active {
-  transform: scale(0.99);
-}
-
-/* User Bubble: Tông màu xanh lá điểm nhấn (Hologram Emerald Gradient) */
 .message-row.user .message-bubble {
-  background: linear-gradient(135deg, #10b981 0%, #059669 60%, #0891b2 100%);
-  backdrop-filter: var(--liquid-glass-blur-sm);
-  -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: linear-gradient(135deg, #059669 0%, #047857 58%, #0f766e 100%);
+  border: 1px solid rgba(167, 243, 208, 0.24);
   color: #ffffff;
   border-bottom-right-radius: 4px;
   box-shadow:
-    0 4px 16px rgba(16, 185, 129, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    0 6px 18px rgba(4, 120, 87, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
-/* Assistant Bubble: Sleek Frosted Glass */
 .message-row.assistant .message-bubble {
-  background: rgba(30, 36, 50, 0.75);
-  backdrop-filter: var(--liquid-glass-blur);
-  -webkit-backdrop-filter: var(--liquid-glass-blur);
-  border: 1px solid var(--liquid-glass-border);
-  color: var(--liquid-text-primary);
+  background: var(--glass-bg-elevated);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-primary);
   border-bottom-left-radius: 4px;
-  box-shadow: var(--liquid-shadow-soft), var(--liquid-glass-highlight);
+  box-shadow: var(--shadow-sm), var(--glass-highlight);
 }
 
-/* Thời gian hiện khi bấm vào tin nhắn */
+.message-text {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  letter-spacing: -0.004em;
+}
+
+/* Timestamp dưới bong bóng */
 .bubble-timestamp-popup {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--liquid-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
   margin-top: 4px;
   padding: 0 4px;
-  animation: fadeInTimestamp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeInTimestamp 0.2s var(--ease-standard);
   user-select: none;
 }
 
@@ -821,7 +716,7 @@ body {
 
 .message-row.assistant .bubble-timestamp-popup {
   text-align: left;
-  padding-left: 40px;
+  padding-left: 38px;
 }
 
 @keyframes fadeInTimestamp {
@@ -835,32 +730,26 @@ body {
   }
 }
 
-.message-text {
-  font-size: 14.5px;
-  letter-spacing: -0.005em;
-}
-
-/* Processing State (< 200ms) - Liquid Pulse Indicator */
+/* Processing & Streaming — đồng bộ Emerald Mint (bỏ xanh dương) */
 .processing-state-box {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 4px 10px;
-  border-radius: var(--liquid-radius-pill);
+  gap: 10px;
+  padding: 2px 4px;
 }
 
 .liquid-pulse-dots {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 5px;
 }
 
 .liquid-dot {
-  width: 6.5px;
-  height: 6.5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background-color: #60a5fa;
-  animation: liquidPulse 1.4s infinite ease-in-out both;
+  background-color: var(--color-accent-mint);
+  animation: liquidPulse 1.35s infinite ease-in-out both;
 }
 
 .liquid-dot:nth-child(1) {
@@ -880,33 +769,31 @@ body {
   80%,
   100% {
     transform: scale(0.6);
-    opacity: 0.4;
+    opacity: 0.35;
   }
   40% {
-    transform: scale(1.1);
+    transform: scale(1.12);
     opacity: 1;
-    box-shadow: 0 0 8px rgba(96, 165, 250, 0.8);
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.75);
   }
 }
 
 .processing-label {
-  font-size: 13px;
-  color: #93c5fd;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-size: var(--font-size-sm);
+  color: var(--color-accent-mint-soft);
+  font-weight: var(--font-weight-medium);
 }
 
-/* Streaming Typing Cursor */
 .streaming-cursor {
   display: inline-block;
-  width: 7px;
-  height: 15px;
-  background-color: #60a5fa;
+  width: 6px;
+  height: 14px;
+  background-color: var(--color-accent-mint);
   margin-left: 4px;
-  vertical-align: -1px;
+  vertical-align: -2px;
   border-radius: 2px;
   animation: blinkCursor 0.8s infinite;
-  box-shadow: 0 0 6px rgba(96, 165, 250, 0.6);
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
 }
 
 @keyframes blinkCursor {
@@ -919,108 +806,102 @@ body {
   }
 }
 
-/* Bubble Error State (Dịu mắt, không đỏ rực, không dùng mã lỗi thô) */
+/* Bubble Error State */
 .bubble-error-content {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: #cbd5e1;
-  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
 }
 
 .bubble-error-header {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-weight: 500;
-  color: #cbd5e1;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
 }
 
 .bubble-error-icon {
   display: inline-flex;
   align-items: center;
-  color: #94a3b8;
+  justify-content: center;
+  color: var(--color-danger-text);
   flex-shrink: 0;
-}
-
-.bubble-error-code {
-  display: none;
 }
 
 .bubble-error-message {
   line-height: 1.45;
-  color: #cbd5e1;
+  color: var(--color-text-secondary);
 }
 
 .bubble-error-actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 4px;
 }
 
 .bubble-retry-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 4px 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 500;
+  height: 28px;
+  padding: 0 11px;
+  background: var(--glass-bg-subtle);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .bubble-retry-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: #10b981;
-  color: #34d399;
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent-border);
+  color: var(--color-accent-mint);
 }
 
-/* Error Banner (Dark Glass tối giản) */
+/* Error Banner */
 .error-banner {
-  margin: 0 20px 14px;
-  padding: 8px 14px;
-  background: rgba(30, 41, 59, 0.85);
-  backdrop-filter: var(--liquid-glass-blur-sm);
-  -webkit-backdrop-filter: var(--liquid-glass-blur-sm);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  margin: 0 clamp(12px, 1.4vw, 18px) 10px;
+  padding: 8px 12px;
+  background: var(--glass-bg-elevated);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-card);
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #e2e8f0;
-  font-size: 13px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  box-shadow: var(--shadow-sm);
   z-index: 20;
 }
 
 .error-banner-icon {
   display: inline-flex;
   align-items: center;
-  color: #94a3b8;
-  font-size: 15px;
+  justify-content: center;
+  color: var(--color-danger-text);
   flex-shrink: 0;
 }
 
 .error-banner-body {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.error-banner-code {
-  display: none;
 }
 
 .error-banner-text {
   line-height: 1.4;
-  color: #e2e8f0;
+  color: var(--color-text-primary);
 }
 
 .error-banner-actions {
@@ -1031,148 +912,108 @@ body {
 }
 
 .error-banner-retry {
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 5px;
-  color: #ffffff;
-  font-size: 11.5px;
+  height: 26px;
+  padding: 0 10px;
+  background: var(--glass-bg-subtle);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition:
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .error-banner-retry:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: #34d399;
-  color: #34d399;
+  border-color: var(--color-accent-border);
+  color: var(--color-accent-mint);
 }
 
 .error-banner-close {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
-  color: #94a3b8;
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: 13px;
   cursor: pointer;
-  padding: 3px 6px;
-  border-radius: 4px;
-  transition: all 0.18s ease;
+  border-radius: var(--radius-control);
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .error-banner-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: var(--glass-bg-subtle);
+  color: var(--color-text-primary);
 }
 
-/* Floating Glass Composer Footer */
+/* ==========================================================================
+   5. COMPOSER FOOTER (CONCENTRIC 16px PANEL -> 8px PAD -> 32px PILL CONTROLS)
+   ========================================================================== */
 .chat-footer {
-  padding: 0 20px 20px;
+  padding: clamp(8px, 1.2vh, 12px) clamp(12px, 1.4vw, 18px) clamp(10px, 1.6vh, 16px);
+  background: var(--glass-bg-header);
+  border-top: 1px solid var(--glass-divider);
   position: relative;
   z-index: 20;
+  flex-shrink: 0;
 }
 
 .composer-wrapper {
+  width: 100%;
   max-width: 820px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .composer-glass-panel {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px 6px 6px;
-  background: var(--liquid-bg-surface-elevated);
-  backdrop-filter: var(--liquid-glass-blur);
-  -webkit-backdrop-filter: var(--liquid-glass-blur);
-  border: 1px solid var(--liquid-glass-border);
-  border-radius: 28px;
-  box-shadow: var(--liquid-shadow-elevated), var(--liquid-glass-highlight);
+  flex-direction: column;
+  padding: 8px 10px;
+  gap: 6px;
+  background: var(--glass-bg-elevated);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-sm), var(--glass-highlight);
+  position: relative;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color var(--duration-normal) var(--ease-standard),
+    box-shadow var(--duration-normal) var(--ease-standard);
 }
 
-/* Chỉ highlight khung chat khi ô nhập liệu (chat-input) được focus, bấm + hoặc micro không làm highlight khung chat */
 .composer-glass-panel:has(.chat-input:focus) {
-  border-color: #10b981;
-  box-shadow:
-    var(--liquid-shadow-elevated),
-    0 0 0 3px rgba(16, 185, 129, 0.25),
-    var(--liquid-glass-highlight);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-sm), var(--color-accent-ring), var(--glass-highlight);
 }
 
-/* Thao tác nút + và Micro trong Composer */
-.composer-action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    color 0.18s ease;
-  flex-shrink: 0;
-  user-select: none;
-  outline: none;
-}
-
-.composer-action-btn:focus,
-.composer-action-btn:focus-visible {
-  outline: none;
-}
-
-.composer-action-btn.plus-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  margin-left: 2px;
-}
-
-.composer-action-btn.plus-btn .action-symbol {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.composer-action-btn.plus-btn:hover {
-  border-color: #10b981;
-  color: #ffffff;
-}
-
-.composer-action-btn.mic-btn {
-  background: transparent;
-  color: #8e8e93;
-}
-
-.composer-action-btn.mic-btn:hover {
-  border-color: rgba(16, 185, 129, 0.45);
-  color: #34d399;
-}
-
-.mic-svg {
-  display: block;
-}
-
+/* Ô nhập văn bản căn giữa quang học cho cả 1 dòng và nhiều dòng */
 .chat-input {
-  flex: 1;
+  width: 100%;
+  min-height: 28px;
+  max-height: 120px;
+  resize: none;
   background: transparent;
   border: none;
   outline: none;
-  color: var(--liquid-text-primary);
-  font-size: 14.5px;
-  line-height: 1.45;
-  resize: none;
-  max-height: 120px;
-  padding: 6px 4px;
-  font-family: inherit;
-  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+  padding: 3px 6px;
+  margin: 0;
+  overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+
+.chat-input:focus-visible {
+  outline: none;
 }
 
 .chat-input::-webkit-scrollbar {
@@ -1182,759 +1023,93 @@ body {
 }
 
 .chat-input::placeholder {
-  color: var(--liquid-text-tertiary);
+  color: var(--color-text-placeholder);
 }
 
-/* Nút gửi phong cách Hologram Emerald Apple tròn */
-.send-button {
-  background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #06b6d4 100%);
-  color: #ffffff;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: border-color 0.18s ease;
-  flex-shrink: 0;
-}
-
-.send-arrow {
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1;
-  transform: translateY(-1px);
-}
-
-.send-arrow-svg {
-  display: block;
-  transform: translateY(-0.5px);
-}
-
-.send-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: spinSend 0.8s linear infinite;
-}
-
-@keyframes spinSend {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.send-button:hover:not(:disabled) {
-  border-color: #a7f3d0;
-}
-
-.send-button:active:not(:disabled) {
-  border-color: #a7f3d0;
-}
-
-.send-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.composer-hints {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 10px;
-  font-size: 11px;
-  color: var(--liquid-text-tertiary);
-  user-select: none;
-}
-
-/* Ẩn thanh cuộn chat-body để loại bỏ thanh dọc không mong muốn trong khung chat */
-.chat-body::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-.chat-body::-webkit-scrollbar-track {
-  display: none;
-}
-
-.chat-body::-webkit-scrollbar-thumb {
-  display: none;
-}
-
-/* ==========================================================================
-   Responsive Breakpoints - Giao diện Chat & Toàn ứng dụng
-   ========================================================================== */
-
-/* 1. Màn hình lớn & Maximized Desktop (>= 1200px) */
-@media (min-width: 1200px) {
-  .chat-messages {
-    max-width: 880px;
-    margin: 0 auto;
-    width: 100%;
-  }
-
-  .composer-wrapper {
-    max-width: 880px;
-  }
-}
-
-/* 2. Màn hình Tablet & Cửa sổ thu vừa (<= 900px) */
-@media (max-width: 900px) {
-  .chat-header {
-    height: 62px;
-    min-height: 62px;
-    padding: 0 18px;
-  }
-
-  .chat-body {
-    padding: 16px 18px;
-  }
-
-  .message-content-wrapper {
-    max-width: 80%;
-  }
-
-  .chat-footer {
-    padding: 0 18px 16px;
-  }
-}
-
-/* 3. Cửa sổ Compact / Chia đôi màn hình (<= 768px) */
-@media (max-width: 768px) {
-  .chat-header {
-    height: 58px;
-    min-height: 58px;
-    padding: 0 14px;
-  }
-
-  .brand {
-    gap: 10px;
-  }
-
-  .brand-avatar-wrapper {
-    width: 36px;
-    height: 36px;
-  }
-
-  .brand-name {
-    font-size: 15px;
-  }
-
-  .brand-subtitle {
-    font-size: 11px;
-  }
-
-  .header-meta {
-    gap: 8px;
-  }
-
-  .chat-body {
-    padding: 14px 14px;
-  }
-
-  .message-content-wrapper {
-    max-width: 86%;
-  }
-
-  .message-bubble {
-    padding: 9px 14px;
-    font-size: 14px;
-  }
-
-  .chat-footer {
-    padding: 0 14px 12px;
-  }
-
-  .composer-glass-panel {
-    padding: 5px 6px 5px 12px;
-    gap: 8px;
-  }
-
-  .send-button {
-    width: 34px;
-    height: 34px;
-  }
-}
-
-/* 4. Cửa sổ hẹp / Mobile View (<= 640px) */
-@media (max-width: 640px) {
-  .brand-subtitle {
-    display: none;
-  }
-
-  .persistence-pill .persistence-label {
-    display: none;
-  }
-
-  .persistence-pill {
-    padding: 6px 10px;
-  }
-
-  .message-content-wrapper {
-    max-width: 90%;
-  }
-
-  .composer-hints {
-    display: none;
-  }
-
-  .composer-action-btn.mic-btn {
-    display: none;
-  }
-
-  .prompt-btn {
-    width: 100%;
-    text-align: left;
-  }
-}
-
-/* 5. Cửa sổ siêu nhỏ (<= 480px) */
-@media (max-width: 480px) {
-  .chat-header {
-    height: 54px;
-    min-height: 54px;
-    padding: 0 10px;
-  }
-
-  .brand-avatar-wrapper {
-    width: 32px;
-    height: 32px;
-  }
-
-  .brand-name {
-    font-size: 14px;
-  }
-
-  .message-content-wrapper {
-    max-width: 94%;
-  }
-
-  .message-bubble {
-    font-size: 13.5px;
-    padding: 8px 12px;
-  }
-
-  .msg-avatar-wrapper {
-    width: 28px;
-    height: 28px;
-  }
-
-  .chat-footer {
-    padding: 0 8px 8px;
-  }
-}
-
-/* 6. Chiều cao cửa sổ hạn chế (<= 600px height) */
-@media (max-height: 600px) {
-  .chat-empty-state {
-    padding: 16px 10px;
-  }
-
-  .empty-avatar-card {
-    width: 52px;
-    height: 52px;
-    margin-bottom: 8px;
-  }
-
-  .empty-title {
-    font-size: 18px;
-    margin-bottom: 6px;
-  }
-
-  .empty-subtitle {
-    font-size: 12px;
-    margin-bottom: 12px;
-    line-height: 1.4;
-  }
-
-  .suggested-prompts {
-    gap: 6px;
-  }
-
-  .prompt-btn {
-    padding: 6px 12px;
-    font-size: 12px;
-  }
-
-  .composer-hints {
-    display: none;
-  }
-
-  .chat-footer {
-    padding-bottom: 8px;
-  }
-}
-
-/* ==========================================================================
-   IMMERSIVE HUD OVERLAY & CHARACTER STAGE (ASADA SINON 3D/VIDEO)
-   ========================================================================== */
-
-/* 1. Sân khấu Nhân vật (Character Stage - Chiếm trọn 75% Viewport) */
-.character-stage {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-  overflow: hidden;
-  background-color: #070d18;
-}
-
-.character-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 20%;
-  transition:
-    opacity 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-    filter 0.55s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: opacity, transform, filter;
-}
-
-/* Video đang phát chính: sắc nét, scale 1.0 */
-.character-video.video-active {
-  opacity: 1;
-  transform: scale(1);
-  filter: blur(0px) brightness(1);
-  z-index: 2;
-}
-
-/* Video inactive (đang chuyển cảnh ra hoặc vào): zoom nhẹ 1.025, blur nhẹ 4px để xóa bóng ma CapCut */
-.character-video.video-inactive {
-  opacity: 0;
-  transform: scale(1.025);
-  filter: blur(4px) brightness(1.06);
-  z-index: 1;
-}
-
-/* Hiệu ứng chớp sáng hòa trộn phong cách CapCut (Light Leak / Glow Blend) giữa 2 lần chuyển */
-.stage-capcut-flash {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 0;
-  background: radial-gradient(
-    circle at 50% 45%,
-    rgba(16, 185, 129, 0.28) 0%,
-    rgba(56, 189, 248, 0.16) 45%,
-    transparent 75%
-  );
-  mix-blend-mode: screen;
-  transition: opacity 0.3s ease-out;
-}
-
-.stage-capcut-flash.flash-active {
-  animation: capcutFlashPulse 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-@keyframes capcutFlashPulse {
-  0% {
-    opacity: 0;
-    filter: blur(10px) brightness(1);
-  }
-  35% {
-    opacity: 0.95;
-    filter: blur(4px) brightness(1.25);
-  }
-  100% {
-    opacity: 0;
-    filter: blur(12px) brightness(1);
-  }
-}
-
-/* Lớp phủ chuyển tiếp studio mềm giữa video và khung chat bên phải */
-.stage-vignette {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to right, transparent 70%, rgba(7, 13, 24, 0.65) 100%),
-    linear-gradient(
-      to bottom,
-      rgba(7, 13, 24, 0.25) 0%,
-      transparent 30%,
-      rgba(7, 13, 24, 0.45) 100%
-    );
-  pointer-events: none;
-}
-
-/* Quầng sáng tương tác Hologram Emerald khi nhân vật nói / nghe */
-.stage-ambient-glow {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.6s ease;
-}
-
-.character-stage.is-interacting .stage-ambient-glow {
-  opacity: 1;
-  background: radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.18) 0%, transparent 68%);
-  animation: ambientGlowPulse 2.4s infinite ease-in-out;
-}
-
-@keyframes ambientGlowPulse {
-  0% {
-    transform: scale(0.96);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.04);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.96);
-    opacity: 0.6;
-  }
-}
-
-/* ==========================================================================
-   SPLIT LAYOUT: HÌNH BÊN TRÁI 3/4 & CHAT BÊN PHẢI (RESIZABLE & DROP-UP COMPOSER)
-   ========================================================================== */
-
-/* Khung ứng dụng Split View */
-.chat-app.split-layout {
-  display: flex;
-  flex-direction: row;
-  width: 100vw;
-  height: 100vh;
-  position: relative;
-  overflow: hidden;
-  background: var(--liquid-bg-base);
-}
-
-/* Cột Trái: Sân khấu Nhân vật Asada Sinon (Tự động co giãn theo chatWidth) */
-.character-stage-panel {
-  flex: 1 1 0%; /* Chiếm trọn toàn bộ phần còn lại sau khi trừ khung chat */
-  min-width: 0;
-  height: 100%;
-  position: relative;
-  overflow: hidden;
-  background-color: #070d18;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Ranh giới kéo thay đổi kích thước (Split Resizer Divider) */
-.split-resizer {
-  flex: 0 0 14px;
-  width: 14px;
-  margin-left: -7px;
-  margin-right: -7px;
-  height: 100%;
-  position: relative;
-  z-index: 30;
-  cursor: col-resize;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-  touch-action: none;
-}
-
-.resizer-handle-line {
-  width: 2px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.08);
-  transition:
-    background-color 0.2s ease,
-    width 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.split-resizer:hover .resizer-handle-line,
-.split-resizer.is-dragging .resizer-handle-line {
-  width: 3px;
-  background-color: #10b981;
-  box-shadow:
-    0 0 10px rgba(16, 185, 129, 0.8),
-    0 0 20px rgba(16, 185, 129, 0.4);
-}
-
-/* Chặn chọn text khi đang kéo thu phóng */
-.chat-app.is-resizing {
-  cursor: col-resize !important;
-  user-select: none !important;
-}
-
-.chat-app.is-resizing * {
-  user-select: none !important;
-  cursor: col-resize !important;
-}
-
-.chat-app.is-resizing video,
-.chat-app.is-resizing iframe {
-  pointer-events: none !important;
-}
-
-/* Cột Phải: Khung Trò chuyện Đầy đủ (chiều rộng động theo style width) */
-.chat-panel {
-  flex: 0 0 auto; /* Tuân thủ tuyệt đối theo style width, không bị Flexbox ghi đè */
-  min-width: 280px;
-  max-width: 75vw;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  background: rgba(11, 17, 32, 0.92);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  overflow: hidden;
-  z-index: 5;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
-}
-
-/* Header trong Cột Phải (Đã tinh giản: chỉ giữ Avatar/Tên và Nút Drawer) */
-.chat-panel .chat-header {
-  height: 60px;
-  min-height: 60px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--liquid-glass-border);
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: var(--liquid-glass-blur);
-  -webkit-backdrop-filter: var(--liquid-glass-blur);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.chat-panel .chat-header .brand {
-  gap: 10px;
-  min-width: 0;
-}
-
-.chat-panel .chat-header .brand-title {
-  min-width: 0;
-}
-
-.chat-panel .chat-header .brand-name {
-  font-size: 14.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.chat-panel .chat-header .brand-subtitle {
-  font-size: 11.5px;
-  color: var(--liquid-accent);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
-}
-
-.chat-panel .chat-header .brand-subtitle.is-error-clickable {
-  color: #94a3b8;
-  cursor: pointer;
-  text-decoration: underline dotted;
-  transition: color 0.18s ease;
-}
-
-.chat-panel .chat-header .brand-subtitle.is-error-clickable:hover {
-  color: #f1f5f9;
-}
-
-.chat-panel .chat-header .header-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.settings-toggle-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--liquid-glass-border);
-  color: var(--liquid-text-secondary);
-  cursor: pointer;
-  transition: all 0.18s ease;
-  box-sizing: border-box;
-}
-
-.settings-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
-
-/* Body & Messages trong Cột Phải */
-.chat-panel .chat-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 14px;
-}
-
-.chat-panel .chat-empty-state {
-  padding: 24px 12px;
-}
-
-.chat-panel .empty-avatar-card {
-  width: 64px;
-  height: 64px;
-  margin-bottom: 12px;
-}
-
-.chat-panel .empty-title {
-  font-size: 16px;
-}
-
-.chat-panel .empty-subtitle {
-  font-size: 12px;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-
-.chat-panel .suggested-prompts {
-  gap: 8px;
-}
-
-.chat-panel .prompt-btn {
-  font-size: 12px;
-  padding: 8px 12px;
-}
-
-/* Footer / Multi-Row Composer trong Cột Phải */
-.chat-panel .chat-footer {
-  padding: 10px 14px 14px 14px;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.chat-panel .composer-wrapper {
-  max-width: 100%;
-  margin: 0;
-}
-
-.chat-panel .composer-glass-panel {
-  display: flex;
-  flex-direction: column;
-  padding: 6px 10px 6px 10px;
-  gap: 5px;
-  background: rgba(11, 17, 32, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  position: relative;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.chat-panel .composer-glass-panel:has(.chat-input:focus) {
-  border-color: #10b981;
-  box-shadow:
-    var(--liquid-shadow-elevated),
-    0 0 0 3px rgba(16, 185, 129, 0.25),
-    var(--liquid-glass-highlight);
-}
-
-/* Vùng nhập văn bản ở nửa trên: Căn giữa theo chiều trên/dưới, thu nhỏ vừa vặn */
-.chat-panel .chat-input {
-  width: 100%;
-  height: 26px;
-  min-height: 26px;
-  max-height: 120px;
-  resize: none;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #f1f5f9;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 26px;
-  box-sizing: border-box;
-  padding: 0 4px;
-  margin: 0;
-}
-
-.chat-panel .chat-input::placeholder {
-  color: var(--liquid-text-tertiary);
-  line-height: 26px;
-}
-
-/* Composer Toolbar (Hàng 2: Dấu + & dropup căn trái, Mic & Gửi căn phải) */
 .composer-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--glass-divider);
 }
 
-.toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-start;
-}
-
+.toolbar-left,
 .toolbar-right {
   display: flex;
   align-items: center;
   gap: 8px;
-  justify-content: flex-end;
 }
 
-/* Căn chỉnh chiều cao tất cả các nút bằng nhau (32px) */
-.composer-toolbar .composer-action-btn {
+.composer-action-btn {
   width: 32px;
   height: 32px;
-  min-height: 32px;
-  max-height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-sizing: border-box;
-}
-
-.composer-toolbar .mode-selector-pill {
-  height: 32px;
-  min-height: 32px;
-  max-height: 32px;
-  padding: 0 10px;
-  box-sizing: border-box;
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--liquid-radius-pill);
-}
-
-.composer-toolbar .send-button {
-  width: 32px;
-  height: 32px;
-  min-height: 32px;
-  max-height: 32px;
-  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
+  flex-shrink: 0;
+  user-select: none;
+  transition:
+    border-color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard);
 }
 
-.composer-toolbar .send-arrow-svg {
-  width: 16px;
-  height: 16px;
+.composer-action-btn:active {
+  transform: scale(0.93);
 }
 
-/* Drop-up Trigger Pill (Chuẩn vector monochrome không icon 3D, không highlight vàng) */
+.composer-action-btn.plus-btn {
+  background: var(--glass-bg-subtle);
+  border-color: var(--glass-border);
+  color: var(--color-text-secondary);
+}
+
+.composer-action-btn.plus-btn:hover {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-mint);
+}
+
+.composer-action-btn.mic-btn:hover {
+  border-color: var(--color-accent-border);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-mint);
+}
+
+.composer-action-btn.mic-btn.is-listening {
+  color: var(--color-teal-text);
+  border-color: var(--color-teal-border);
+  background: var(--color-teal-subtle);
+  box-shadow: 0 0 12px rgba(20, 184, 166, 0.35);
+  animation: micPulse 1s infinite alternate;
+}
+
+@keyframes micPulse {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.06);
+  }
+}
+
+.mic-svg,
+.send-arrow-svg,
+.mode-pill-svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Mode Selector Drop-up */
 .composer-mode-selector {
   position: relative;
   display: inline-flex;
@@ -1942,40 +1117,41 @@ body {
 }
 
 .mode-selector-pill {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
-  font-size: 11.5px;
-  font-weight: 500;
+  background: var(--glass-bg-subtle);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
-  transition: all 0.16s ease;
   user-select: none;
-  outline: none;
+  transition:
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .mode-selector-pill:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #f8fafc;
-}
-
-.mode-pill-svg {
-  flex-shrink: 0;
-  opacity: 0.85;
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-strong);
+  color: var(--color-text-primary);
 }
 
 .mode-pill-label {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   line-height: 1;
 }
 
 .mode-pill-chevron {
-  opacity: 0.6;
-  transition: transform 0.18s ease;
+  color: var(--color-text-muted);
+  transition: transform var(--duration-fast) var(--ease-standard);
   flex-shrink: 0;
 }
 
@@ -1983,30 +1159,36 @@ body {
   transform: rotate(180deg);
 }
 
-/* Drop-up Menu nhỏ gọn, tối giản: chỉ hiển thị 2 option */
+/* Drop-up Menu: 12px outer + 4px pad -> 8px item (đồng tâm chuẩn) */
 .mode-dropup-menu {
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   left: 0;
-  width: 155px;
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.65),
-    0 0 1px rgba(255, 255, 255, 0.15);
+  min-width: 164px;
+  background: var(--glass-bg-elevated-solid);
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lg), var(--glass-highlight);
   padding: 4px;
   z-index: 100;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  animation: dropupFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: dropupFadeIn var(--duration-fast) var(--ease-standard) forwards;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .mode-dropup-menu {
+    background: rgba(16, 25, 33, 0.94);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
 }
 
 @keyframes dropupFadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px) scale(0.98);
+    transform: translateY(5px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -2018,40 +1200,40 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 8px;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   cursor: pointer;
   text-align: left;
-  transition: background 0.12s ease;
   width: 100%;
-  color: #e2e8f0;
+  color: var(--color-text-secondary);
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease;
 }
 
 .dropup-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  background: var(--glass-bg-subtle);
+  color: var(--color-text-primary);
 }
 
 .dropup-item.is-selected {
-  background: rgba(16, 185, 129, 0.12);
-  color: #a7f3d0;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent-mint-soft);
 }
 
 .dropup-item-left {
   display: flex;
   align-items: center;
-  gap: 7px;
-}
-
-.dropup-item-left svg {
-  opacity: 0.85;
+  gap: 8px;
 }
 
 .dropup-item-label {
-  font-size: 11.5px;
-  font-weight: 500;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
   white-space: nowrap;
 }
 
@@ -2059,16 +1241,67 @@ body {
   flex-shrink: 0;
 }
 
-/* Responsive Breakpoint cho màn hình hẹp */
+/* Send Button — Matte Emerald */
+.send-button {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  padding: 0;
+  border: 1px solid rgba(167, 243, 208, 0.28);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+  transition:
+    filter var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    transform var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) ease;
+}
+
+.send-button:hover:not(:disabled) {
+  filter: brightness(1.07);
+  border-color: var(--color-accent-mint-soft);
+  transform: translateY(-1px);
+}
+
+.send-button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.send-button:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: none;
+}
+
+.send-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.32);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: pvaSpin 0.8s linear infinite;
+}
+
+/* ==========================================================================
+   6. RESPONSIVE BREAKPOINTS & REDUCED MOTION
+   ========================================================================== */
 @media (max-width: 860px) {
   .chat-app.split-layout {
     flex-direction: column;
+    gap: var(--gravity-gap);
   }
 
   .character-stage-panel {
-    flex: none;
+    flex: 0 0 40vh;
     width: 100%;
-    height: 45vh;
+    height: 40vh;
   }
 
   .split-resizer {
@@ -2076,10 +1309,94 @@ body {
   }
 
   .chat-panel {
-    flex: 1;
+    flex: 1 1 0%;
     width: 100% !important;
     max-width: 100%;
     min-width: 0;
-    height: 55vh;
+    min-height: 0;
+    height: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-subtitle {
+    display: none;
+  }
+
+  .message-content-wrapper {
+    max-width: 90%;
+  }
+
+  .prompt-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .chat-app.split-layout {
+    padding: 0;
+    gap: 0;
+  }
+
+  .character-stage-panel,
+  .chat-panel {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .character-stage-panel {
+    flex: 0 0 34vh;
+    height: 34vh;
+    border-top: none;
+  }
+
+  .chat-panel {
+    border-bottom: none;
+  }
+
+  .msg-avatar-wrapper {
+    width: 26px;
+    height: 26px;
+  }
+
+  .message-row.assistant .bubble-timestamp-popup {
+    padding-left: 34px;
+  }
+}
+
+@media (max-height: 600px) {
+  .chat-empty-state {
+    padding: 12px 10px;
+  }
+
+  .empty-avatar-card {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 8px;
+  }
+
+  .empty-subtitle {
+    margin-bottom: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-avatar-status-dot,
+  .stage-capcut-flash,
+  .stage-ambient-glow,
+  .liquid-dot,
+  .streaming-cursor,
+  .composer-action-btn.mic-btn.is-listening,
+  .mode-dropup-menu,
+  .bubble-timestamp-popup {
+    animation: none !important;
+  }
+
+  .character-video,
+  .resizer-handle-line,
+  .prompt-btn,
+  .send-button {
+    transition: none !important;
   }
 }
